@@ -92,8 +92,10 @@ export async function validateLLMResponse(
           return { valid: false, error: 'Exercise reps must be >= 1' }
         }
 
-        if (typeof exercise.exercise_order !== 'number' || exercise.exercise_order < 1) {
-          return { valid: false, error: 'Exercise exercise_order must be >= 1' }
+        // Note: exercise_order is normalized before validation, so we just check it's a number
+        // The actual value will be normalized to sequential 1-based indexing
+        if (typeof exercise.exercise_order !== 'number') {
+          return { valid: false, error: 'Exercise exercise_order must be a number' }
         }
 
         if (exercise.weight_level && !VALID_WEIGHT_LEVELS.includes(exercise.weight_level)) {

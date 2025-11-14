@@ -71,6 +71,16 @@ export async function POST(request: NextRequest) {
       body.programRequirements
     )
 
+    // 4.5. Normalize exercise_order values to ensure 1-based sequential indexing
+    // This prevents any issues with LLM returning 0-based or invalid values
+    llmResponse.workouts.forEach((workout) => {
+      workout.blocks.forEach((block) => {
+        block.exercises.forEach((exercise, index) => {
+          exercise.exercise_order = index + 1
+        })
+      })
+    })
+
     // 5. Validate LLM response
     const validation = await validateLLMResponse(llmResponse, availableExerciseIds)
 

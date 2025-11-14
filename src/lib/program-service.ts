@@ -110,23 +110,53 @@ export async function createProgramFromLLMResponse(
       }
 
       // Create block_exercises
-      // Normalize exercise_order to ensure sequential 1-based indexing (database requires >= 1)
-      // Use index + 1 to guarantee sequential ordering starting from 1
-      const blockExercises = block.exercises.map((exercise, index) => ({
-        block_id: blockId,
-        exercise_id: exercise.exercise_id,
-        reps: exercise.reps,
-        weight_level: exercise.weight_level || null,
-        // Always use sequential 1-based indexing (1, 2, 3...) regardless of LLM output
-        exercise_order: index + 1,
-      }))
+      // Ensure exercise_order is sequential 1-based indexing (Supabase requires >= 1)
+      // Double-check: normalize again to be absolutely sure
+      const blockExercises = block.exercises.map((exercise, index) => {
+        const exerciseOrder = Math.floor(index + 1) // Ensure integer
+        
+        // Final safety check: ensure exercise_order is always >= 1
+        if (exerciseOrder < 1 || !Number.isInteger(exerciseOrder)) {
+          throw new Error(`Invalid exercise_order calculated: ${exerciseOrder}. Must be integer >= 1.`)
+        }
+        
+        return {
+          block_id: blockId,
+          exercise_id: Math.floor(exercise.exercise_id), // Ensure integer
+          reps: Math.floor(exercise.reps), // Ensure integer
+          weight_level: exercise.weight_level || null,
+          exercise_order: exerciseOrder,
+        }
+      })
 
-      const { error: blockExercisesError } = await supabaseAdmin
+      // Log for debugging if needed
+      if (blockExercises.length > 0) {
+        console.log(`Creating ${blockExercises.length} exercises for block ${blockId}`)
+        blockExercises.forEach((ex, idx) => {
+          if (ex.exercise_order < 1) {
+            console.error(`ERROR: Invalid exercise_order at index ${idx}:`, ex)
+          }
+        })
+      }
+
+      const { error: blockExercisesError, data: insertedData } = await supabaseAdmin
         .from('block_exercises')
         .insert(blockExercises)
+        .select()
 
       if (blockExercisesError) {
-        throw new Error(`Failed to create block exercises: ${blockExercisesError.message}`)
+        // Log detailed error information for debugging
+        console.error('Supabase block_exercises insert error:', {
+          error: blockExercisesError,
+          blockExercises: blockExercises.map(ex => ({
+            block_id: ex.block_id,
+            exercise_id: ex.exercise_id,
+            reps: ex.reps,
+            exercise_order: ex.exercise_order,
+            weight_level: ex.weight_level,
+          })),
+        })
+        throw new Error(`Failed to create block exercises: ${blockExercisesError.message}. Details: ${JSON.stringify(blockExercisesError)}`)
       }
     }
   }
