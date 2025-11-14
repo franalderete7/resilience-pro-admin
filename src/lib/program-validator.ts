@@ -1,40 +1,8 @@
-import type { LLMProgramResponse } from './llm-program-generator'
+import type { LLMProgramResponse } from './types/program'
 
 const VALID_BLOCK_TYPES = ['warmup', 'main', 'cooldown', 'superset', 'circuit', 'standard']
 const VALID_DIFFICULTY_LEVELS = ['beginner', 'intermediate', 'advanced']
 const VALID_WEIGHT_LEVELS = ['no_weight', 'light', 'medium', 'heavy']
-
-export interface LLMProgramResponse {
-  program: {
-    name: string
-    description?: string
-    duration_weeks: number
-    difficulty_level?: string
-    program_type?: string
-  }
-  workouts: Array<{
-    name: string
-    description?: string
-    estimated_duration_minutes?: number
-    difficulty_level?: string
-    workout_type?: string
-    week_number?: number
-    day_of_week?: number
-    workout_order: number
-    blocks: Array<{
-      name: string
-      block_type?: string
-      sets?: number
-      rest_between_exercises?: number
-      exercises: Array<{
-        exercise_id: number
-        reps: number
-        weight_level?: string
-        exercise_order: number
-      }>
-    }>
-  }>
-}
 
 export async function validateLLMResponse(
   response: any,
@@ -55,8 +23,8 @@ export async function validateLLMResponse(
     return { valid: false, error: 'Program name is required' }
   }
 
-  if (!program.duration_weeks || program.duration_weeks < 1) {
-    return { valid: false, error: 'Program duration_weeks must be at least 1' }
+  if (program.duration_weeks !== 2) {
+    return { valid: false, error: 'Program duration_weeks must be exactly 2' }
   }
 
   if (program.difficulty_level && !VALID_DIFFICULTY_LEVELS.includes(program.difficulty_level)) {

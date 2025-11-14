@@ -1,5 +1,5 @@
 import { supabaseAdmin } from './supabase-admin'
-import type { LLMProgramResponse } from './llm-program-generator'
+import type { LLMProgramResponse } from './types/program'
 
 export interface CreatedProgram {
   program_id: number
