@@ -110,12 +110,15 @@ export async function createProgramFromLLMResponse(
       }
 
       // Create block_exercises
-      const blockExercises = block.exercises.map((exercise) => ({
+      // Normalize exercise_order to ensure sequential 1-based indexing (database requires >= 1)
+      // Use index + 1 to guarantee sequential ordering starting from 1
+      const blockExercises = block.exercises.map((exercise, index) => ({
         block_id: blockId,
         exercise_id: exercise.exercise_id,
         reps: exercise.reps,
         weight_level: exercise.weight_level || null,
-        exercise_order: exercise.exercise_order,
+        // Always use sequential 1-based indexing (1, 2, 3...) regardless of LLM output
+        exercise_order: index + 1,
       }))
 
       const { error: blockExercisesError } = await supabaseAdmin
