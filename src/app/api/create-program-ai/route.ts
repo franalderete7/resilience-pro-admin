@@ -4,6 +4,7 @@ import { generateProgramWithLLM } from '@/lib/llm-program-generator'
 import { validateLLMResponse } from '@/lib/program-validator'
 import { createProgramFromLLMResponse } from '@/lib/program-service'
 import { supabaseAdmin } from '@/lib/supabase-admin'
+import { normalizeProgramData } from '@/lib/normalize-program-data'
 
 interface RequestBody {
   userData: {
@@ -71,18 +72,12 @@ export async function POST(request: NextRequest) {
       body.programRequirements
     )
 
-    // 4.5. Normalize exercise_order values to ensure 1-based sequential indexing
-    // This prevents any issues with LLM returning 0-based or invalid values
-    llmResponse.workouts.forEach((workout) => {
-      workout.blocks.forEach((block) => {
-        block.exercises.forEach((exercise, index) => {
-          exercise.exercise_order = index + 1
-        })
-      })
-    })
+    // 4.5. Normalize ALL numeric fields to ensure database constraints are met
+    // This prevents validation errors from Supabase (reps >= 1, sets > 0, etc.)
+    const normalizedResponse = normalizeProgramData(llmResponse)
 
     // 5. Validate LLM response
-    const validation = await validateLLMResponse(llmResponse, availableExerciseIds)
+    const validation = await validateLLMResponse(normalizedResponse, availableExerciseIds)
 
     if (!validation.valid || !validation.data) {
       return NextResponse.json(

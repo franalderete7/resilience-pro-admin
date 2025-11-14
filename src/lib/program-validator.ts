@@ -67,8 +67,9 @@ export async function validateLLMResponse(
         return { valid: false, error: `Invalid block_type: ${block.block_type}` }
       }
 
-      if (block.sets !== undefined && block.sets < 1) {
-        return { valid: false, error: 'Block sets must be >= 1' }
+      // Note: sets will be normalized if invalid, just check it's a number if provided
+      if (block.sets !== undefined && block.sets !== null && typeof block.sets !== 'number') {
+        return { valid: false, error: 'Block sets must be a number' }
       }
 
       if (!block.exercises || !Array.isArray(block.exercises) || block.exercises.length === 0) {
@@ -88,12 +89,12 @@ export async function validateLLMResponse(
           }
         }
 
-        if (typeof exercise.reps !== 'number' || exercise.reps < 1) {
-          return { valid: false, error: 'Exercise reps must be >= 1' }
+        // Note: All numeric values are normalized before validation
+        // Just check they exist and are numbers - normalization handles constraints
+        if (typeof exercise.reps !== 'number') {
+          return { valid: false, error: 'Exercise reps must be a number' }
         }
 
-        // Note: exercise_order is normalized before validation, so we just check it's a number
-        // The actual value will be normalized to sequential 1-based indexing
         if (typeof exercise.exercise_order !== 'number') {
           return { valid: false, error: 'Exercise exercise_order must be a number' }
         }

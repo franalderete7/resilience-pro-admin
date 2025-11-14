@@ -39,12 +39,17 @@ export async function createProgramFromLLMResponse(
   // 2. Create workouts and blocks
   for (const workout of workouts) {
     // Create workout
+    // Ensure estimated_duration_minutes is > 0 if provided
+    const estimatedDuration = workout.estimated_duration_minutes !== null && workout.estimated_duration_minutes !== undefined
+      ? Math.max(1, Math.floor(workout.estimated_duration_minutes))
+      : null
+    
     const { data: workoutData, error: workoutError } = await supabaseAdmin
       .from('workouts')
       .insert({
         name: workout.name,
         description: workout.description || null,
-        estimated_duration_minutes: workout.estimated_duration_minutes || null,
+        estimated_duration_minutes: estimatedDuration,
         difficulty_level: workout.difficulty_level || null,
         workout_type: workout.workout_type || null,
         created_by: userId,
@@ -59,14 +64,23 @@ export async function createProgramFromLLMResponse(
     const workoutId = workoutData.workout_id
 
     // Link workout to program
+    // Ensure workout_order >= 1, week_number >= 1 if provided, day_of_week 1-7 if provided
+    const workoutOrder = Math.max(1, Math.floor(workout.workout_order))
+    const weekNumber = workout.week_number !== null && workout.week_number !== undefined
+      ? Math.max(1, Math.floor(workout.week_number))
+      : null
+    const dayOfWeek = workout.day_of_week !== null && workout.day_of_week !== undefined
+      ? Math.max(1, Math.min(7, Math.floor(workout.day_of_week)))
+      : null
+    
     const { error: programWorkoutError } = await supabaseAdmin
       .from('program_workouts')
       .insert({
         program_id: programId,
         workout_id: workoutId,
-        week_number: workout.week_number || null,
-        day_of_week: workout.day_of_week || null,
-        workout_order: workout.workout_order,
+        week_number: weekNumber,
+        day_of_week: dayOfWeek,
+        workout_order: workoutOrder,
       })
 
     if (programWorkoutError) {
@@ -78,13 +92,19 @@ export async function createProgramFromLLMResponse(
       const block = workout.blocks[blockIndex]
 
       // Create block
+      // Ensure sets is > 0 if provided, rest_between_exercises >= 0
+      const blockSets = block.sets !== null && block.sets !== undefined 
+        ? Math.max(1, Math.floor(block.sets)) 
+        : null
+      const restBetweenExercises = Math.max(0, Math.floor(block.rest_between_exercises || 60))
+      
       const { data: blockData, error: blockError } = await supabaseAdmin
         .from('blocks')
         .insert({
           name: block.name,
           block_type: block.block_type || 'standard',
-          sets: block.sets || null,
-          rest_between_exercises: block.rest_between_exercises || 60,
+          sets: blockSets,
+          rest_between_exercises: restBetweenExercises,
           created_by: userId,
         })
         .select()
@@ -110,34 +130,32 @@ export async function createProgramFromLLMResponse(
       }
 
       // Create block_exercises
-      // Ensure exercise_order is sequential 1-based indexing (Supabase requires >= 1)
-      // Double-check: normalize again to be absolutely sure
+      // All values should already be normalized, but add final safety checks
       const blockExercises = block.exercises.map((exercise, index) => {
-        const exerciseOrder = Math.floor(index + 1) // Ensure integer
+        // Final safety checks - ensure all values meet database constraints
+        const exerciseOrder = Math.max(1, Math.floor(exercise.exercise_order || index + 1))
+        const reps = Math.max(1, Math.floor(exercise.reps || 10)) // Default to 10 if invalid
+        const exerciseId = Math.floor(exercise.exercise_id)
         
-        // Final safety check: ensure exercise_order is always >= 1
-        if (exerciseOrder < 1 || !Number.isInteger(exerciseOrder)) {
-          throw new Error(`Invalid exercise_order calculated: ${exerciseOrder}. Must be integer >= 1.`)
+        // Validate critical fields
+        if (exerciseOrder < 1) {
+          throw new Error(`Invalid exercise_order: ${exerciseOrder}. Must be >= 1.`)
+        }
+        if (reps < 1) {
+          throw new Error(`Invalid reps: ${reps}. Must be >= 1.`)
+        }
+        if (!exerciseId || exerciseId < 1) {
+          throw new Error(`Invalid exercise_id: ${exerciseId}. Must be a positive integer.`)
         }
         
         return {
           block_id: blockId,
-          exercise_id: Math.floor(exercise.exercise_id), // Ensure integer
-          reps: Math.floor(exercise.reps), // Ensure integer
+          exercise_id: exerciseId,
+          reps: reps,
           weight_level: exercise.weight_level || null,
           exercise_order: exerciseOrder,
         }
       })
-
-      // Log for debugging if needed
-      if (blockExercises.length > 0) {
-        console.log(`Creating ${blockExercises.length} exercises for block ${blockId}`)
-        blockExercises.forEach((ex, idx) => {
-          if (ex.exercise_order < 1) {
-            console.error(`ERROR: Invalid exercise_order at index ${idx}:`, ex)
-          }
-        })
-      }
 
       const { error: blockExercisesError, data: insertedData } = await supabaseAdmin
         .from('block_exercises')
