@@ -12,7 +12,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { CreateExerciseModal } from '@/components/create-exercise-modal'
 import { CreateExerciseAIModal } from '@/components/create-exercise-ai-modal'
-import { Plus, Sparkles } from 'lucide-react'
+import { Plus, Sparkles, Trash2 } from 'lucide-react'
 
 interface Exercise {
   exercise_id: number
@@ -51,6 +51,8 @@ export function ExerciseList() {
   const [isVideoOpen, setIsVideoOpen] = useState(false)
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [isCreateAIOpen, setIsCreateAIOpen] = useState(false)
+  const [deletingId, setDeletingId] = useState<number | null>(null)
+  const [deleteConfirm, setDeleteConfirm] = useState<Exercise | null>(null)
 
   useEffect(() => {
     fetchExercises()
@@ -83,6 +85,34 @@ export function ExerciseList() {
     fetchExercises()
   }
 
+  const handleDeleteClick = (e: React.MouseEvent, exercise: Exercise) => {
+    e.stopPropagation() // Prevent card click
+    setDeleteConfirm(exercise)
+  }
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteConfirm) return
+
+    setDeletingId(deleteConfirm.exercise_id)
+    try {
+      const { error } = await supabase
+        .from('exercises')
+        .delete()
+        .eq('exercise_id', deleteConfirm.exercise_id)
+
+      if (error) throw error
+
+      // Refresh exercises list
+      await fetchExercises()
+      setDeleteConfirm(null)
+    } catch (error: any) {
+      console.error('Error deleting exercise:', error)
+      alert(`Error al eliminar ejercicio: ${error.message}`)
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center p-12">
@@ -92,18 +122,18 @@ export function ExerciseList() {
   }
 
   return (
-    <div className="p-6">
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h2 className="text-3xl font-bold text-white">Ejercicios</h2>
-          <p className="text-zinc-400 mt-1">
+    <div className="py-4 sm:py-6">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 sm:mb-8 gap-4">
+        <div className="flex-1">
+          <h2 className="text-2xl sm:text-3xl font-bold text-white">Ejercicios</h2>
+          <p className="text-zinc-400 mt-1 text-sm sm:text-base">
             {exercises.length} {exercises.length === 1 ? 'ejercicio' : 'ejercicios'} en total
           </p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full sm:w-auto">
           <Button
             onClick={() => setIsCreateAIOpen(true)}
-            className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white shadow-lg"
+            className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white shadow-lg cursor-pointer w-full sm:w-auto min-h-[44px] touch-manipulation text-base"
             size="lg"
           >
             <Sparkles className="mr-2 h-5 w-5" />
@@ -112,7 +142,7 @@ export function ExerciseList() {
           <Button
             onClick={() => setIsCreateOpen(true)}
             variant="outline"
-            className="border-zinc-700 text-white hover:bg-zinc-800 shadow-lg"
+            className="border-zinc-700 text-white hover:bg-zinc-800 shadow-lg cursor-pointer w-full sm:w-auto min-h-[44px] touch-manipulation text-base"
             size="lg"
           >
             <Plus className="mr-2 h-5 w-5" />
@@ -122,12 +152,12 @@ export function ExerciseList() {
       </div>
 
       {exercises.length === 0 ? (
-        <div className="flex flex-col items-center justify-center p-12 border-2 border-dashed border-zinc-700 rounded-lg">
-          <p className="text-zinc-400 mb-4">No hay ejercicios aún</p>
-          <div className="flex gap-3">
+        <div className="flex flex-col items-center justify-center p-8 sm:p-12 border-2 border-dashed border-zinc-700 rounded-lg">
+          <p className="text-zinc-400 mb-4 text-center">No hay ejercicios aún</p>
+          <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
             <Button
               onClick={() => setIsCreateAIOpen(true)}
-              className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white"
+              className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white cursor-pointer w-full sm:w-auto min-h-[44px] touch-manipulation"
             >
               <Sparkles className="mr-2 h-4 w-4" />
               Crear con IA
@@ -135,7 +165,7 @@ export function ExerciseList() {
             <Button
               onClick={() => setIsCreateOpen(true)}
               variant="outline"
-              className="border-zinc-700 text-white hover:bg-zinc-800"
+              className="border-zinc-700 text-white hover:bg-zinc-800 cursor-pointer w-full sm:w-auto min-h-[44px] touch-manipulation"
             >
               <Plus className="mr-2 h-4 w-4" />
               Crear Manual
@@ -143,13 +173,23 @@ export function ExerciseList() {
           </div>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {exercises.map((exercise) => (
             <Card
               key={exercise.exercise_id}
-              className="bg-zinc-800 border-zinc-700 text-white cursor-pointer hover:border-zinc-600 hover:shadow-lg transition-all duration-200 group flex flex-col"
+              className="bg-zinc-800 border-zinc-700 text-white cursor-pointer hover:border-zinc-600 hover:shadow-lg transition-all duration-200 group flex flex-col relative"
               onClick={() => handleExerciseClick(exercise)}
             >
+              {/* Delete button - top right - always visible on mobile */}
+              <button
+                onClick={(e) => handleDeleteClick(e, exercise)}
+                disabled={deletingId === exercise.exercise_id}
+                className="absolute top-2 right-2 z-10 p-2 sm:p-1.5 rounded-full bg-red-600 hover:bg-red-700 active:bg-red-800 text-white opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center"
+                title="Eliminar ejercicio"
+              >
+                <Trash2 className="h-5 w-5 sm:h-4 sm:w-4" />
+              </button>
+
               {exercise.image_url ? (
                 <div className="aspect-video w-full overflow-hidden rounded-t-lg bg-zinc-900">
                   <img
@@ -220,9 +260,9 @@ export function ExerciseList() {
       )}
 
       <Dialog open={isVideoOpen} onOpenChange={setIsVideoOpen}>
-        <DialogContent className="max-w-4xl bg-zinc-900 border-zinc-800 text-white">
+        <DialogContent className="max-w-4xl h-full sm:h-auto bg-zinc-900 border-zinc-800 text-white">
           <DialogHeader>
-            <DialogTitle className="text-white text-2xl">
+            <DialogTitle className="text-white text-xl sm:text-2xl">
               {selectedExercise?.name}
             </DialogTitle>
           </DialogHeader>
@@ -273,6 +313,40 @@ export function ExerciseList() {
         onOpenChange={setIsCreateAIOpen}
         onSuccess={handleCreateSuccess}
       />
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={!!deleteConfirm} onOpenChange={(open) => !open && setDeleteConfirm(null)}>
+        <DialogContent className="sm:max-w-[425px] bg-zinc-900 border-zinc-800 text-white">
+          <DialogHeader>
+            <DialogTitle className="text-white">Confirmar Eliminación</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-zinc-300">
+              ¿Estás seguro de que quieres eliminar el ejercicio{' '}
+              <span className="font-semibold text-white">{deleteConfirm?.name}</span>?
+            </p>
+            <p className="text-sm text-zinc-400">
+              Esta acción no se puede deshacer.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <Button
+                onClick={() => setDeleteConfirm(null)}
+                variant="outline"
+                className="border-zinc-700 text-white hover:bg-zinc-800 cursor-pointer"
+              >
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleDeleteConfirm}
+                disabled={deletingId !== null}
+                className="bg-red-600 hover:bg-red-700 text-white cursor-pointer"
+              >
+                {deletingId !== null ? 'Eliminando...' : 'Eliminar'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
