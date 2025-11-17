@@ -88,8 +88,14 @@ export async function extractFrameAsFile(
 ): Promise<File> {
   const frameData = await extractFrameFromVideo(videoFile, timeInSeconds)
 
+  // Convert Uint8Array to proper ArrayBuffer for Blob constructor
+  const arrayBuffer = frameData.buffer.slice(
+    frameData.byteOffset,
+    frameData.byteOffset + frameData.byteLength
+  ) as ArrayBuffer
+
   const fileName = outputFileName || videoFile.name.replace(/\.[^/.]+$/, '.jpg')
-  const blob = new Blob([frameData], { type: 'image/jpeg' })
+  const blob = new Blob([arrayBuffer], { type: 'image/jpeg' })
 
   return new File([blob], fileName, { type: 'image/jpeg' })
 }
