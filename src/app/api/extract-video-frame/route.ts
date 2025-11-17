@@ -20,14 +20,11 @@ export async function POST(request: NextRequest) {
     // Extract frame from video
     const frameBuffer = await extractFrameFromVideo(videoFile, timeInSeconds)
 
-    // Convert Buffer to ArrayBuffer for NextResponse
-    const arrayBuffer = frameBuffer.buffer.slice(
-      frameBuffer.byteOffset,
-      frameBuffer.byteOffset + frameBuffer.byteLength
-    )
+    // Convert Buffer to Uint8Array for NextResponse (compatible type)
+    const uint8Array = new Uint8Array(frameBuffer)
 
     // Return the frame as a blob response
-    return new NextResponse(arrayBuffer, {
+    return new NextResponse(uint8Array, {
       headers: {
         'Content-Type': 'image/jpeg',
         'Content-Disposition': `attachment; filename="${videoFile.name.replace(/\.[^/.]+$/, '.jpg')}"`,
