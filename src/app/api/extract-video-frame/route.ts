@@ -20,8 +20,14 @@ export async function POST(request: NextRequest) {
     // Extract frame from video (returns Uint8Array)
     const frameData = await extractFrameFromVideo(videoFile, timeInSeconds)
 
+    // Convert to a real ArrayBuffer (not SharedArrayBuffer / ArrayBufferLike)
+    const arrayBuffer = frameData.buffer.slice(
+      frameData.byteOffset,
+      frameData.byteOffset + frameData.byteLength
+    ) as ArrayBuffer
+
     // Wrap in Blob so it's a clear BodyInit type
-    const blob = new Blob([frameData], { type: 'image/jpeg' })
+    const blob = new Blob([arrayBuffer], { type: 'image/jpeg' })
 
     // Return the frame as a blob response
     return new NextResponse(blob, {
