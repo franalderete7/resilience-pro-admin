@@ -17,14 +17,14 @@ export async function POST(request: NextRequest) {
     const timeParam = formData.get('time')
     const timeInSeconds = timeParam ? parseFloat(timeParam as string) : 1
 
-    // Extract frame from video
-    const frameBuffer = await extractFrameFromVideo(videoFile, timeInSeconds)
+    // Extract frame from video (returns Uint8Array)
+    const frameData = await extractFrameFromVideo(videoFile, timeInSeconds)
 
-    // Convert Buffer to Uint8Array for NextResponse (compatible type)
-    const uint8Array = new Uint8Array(frameBuffer)
+    // Wrap in Blob so it's a clear BodyInit type
+    const blob = new Blob([frameData], { type: 'image/jpeg' })
 
     // Return the frame as a blob response
-    return new NextResponse(uint8Array, {
+    return new NextResponse(blob, {
       headers: {
         'Content-Type': 'image/jpeg',
         'Content-Disposition': `attachment; filename="${videoFile.name.replace(/\.[^/.]+$/, '.jpg')}"`,

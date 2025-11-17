@@ -1,6 +1,10 @@
 import { FFmpeg } from '@ffmpeg/ffmpeg'
 import { fetchFile, toBlobURL } from '@ffmpeg/util'
 
+// NOTE:
+// This helper is designed for environments where @ffmpeg/ffmpeg runs (e.g. Node/Edge or browser with WASM).
+// It intentionally avoids using Node's Buffer type in the public API to keep it platform-agnostic.
+
 let ffmpegInstance: FFmpeg | null = null
 
 async function getFFmpeg(): Promise<FFmpeg> {
@@ -26,23 +30,21 @@ async function getFFmpeg(): Promise<FFmpeg> {
 
 /**
  * Extracts a frame from a video file at the specified time (default: 1 second)
- * @param videoFile - The video file (File or Buffer)
+ * @param videoFile - The video file (File)
  * @param timeInSeconds - Time in seconds to extract frame (default: 1)
- * @returns Buffer of the extracted frame image (JPEG)
+ * @returns Uint8Array of the extracted frame image (JPEG)
  */
 export async function extractFrameFromVideo(
-  videoFile: File | Buffer,
+  videoFile: File,
   timeInSeconds: number = 1
-): Promise<Buffer> {
+): Promise<Uint8Array> {
   const ffmpeg = await getFFmpeg()
 
   try {
     // Write video file to FFmpeg's virtual filesystem
-    const videoData = videoFile instanceof File 
-      ? await fetchFile(videoFile)
-      : videoFile
-    
-    await ffmpeg.writeFile('input.mp4', new Uint8Array(videoData))
+    const videoData = await fetchFile(videoFile)
+
+    await ffmpeg.writeFile('input.mp4', videoData as Uint8Array)
 
     // Extract frame at specified time
     // -ss: seek to time
@@ -58,12 +60,13 @@ export async function extractFrameFromVideo(
 
     // Read the extracted frame
     const frameData = await ffmpeg.readFile('output.jpg')
-    
+
     // Clean up
     await ffmpeg.deleteFile('input.mp4')
     await ffmpeg.deleteFile('output.jpg')
 
-    return Buffer.from(frameData)
+    // ffmpeg.readFile returns a Uint8Array in web/wasm environments
+    return frameData as Uint8Array
   } catch (error) {
     // Clean up on error
     try {
@@ -83,11 +86,11 @@ export async function extractFrameAsFile(
   timeInSeconds: number = 1,
   outputFileName?: string
 ): Promise<File> {
-  const frameBuffer = await extractFrameFromVideo(videoFile, timeInSeconds)
-  
+  const frameData = await extractFrameFromVideo(videoFile, timeInSeconds)
+
   const fileName = outputFileName || videoFile.name.replace(/\.[^/.]+$/, '.jpg')
-  const blob = new Blob([frameBuffer], { type: 'image/jpeg' })
-  
+  const blob = new Blob([frameData], { type: 'image/jpeg' })
+
   return new File([blob], fileName, { type: 'image/jpeg' })
 }
 
