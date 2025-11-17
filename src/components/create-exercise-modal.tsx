@@ -71,6 +71,13 @@ export function CreateExerciseModal({ open, onOpenChange, onSuccess }: CreateExe
   }
 
   const extractFrameFromVideo = async (videoFile: File): Promise<File | null> => {
+    // Check if video file is reasonable size (under 100MB for mobile)
+    const maxSize = 100 * 1024 * 1024 // 100MB
+    if (videoFile.size > maxSize) {
+      console.warn('Video file too large for mobile extraction:', videoFile.size, 'bytes')
+      return null // Skip extraction for large files
+    }
+
     return new Promise((resolve, reject) => {
       const video = document.createElement('video')
       const canvas = document.createElement('canvas')
@@ -84,9 +91,9 @@ export function CreateExerciseModal({ open, onOpenChange, onSuccess }: CreateExe
       // Set video attributes for proper loading
       video.muted = true
       video.playsInline = true
-      video.preload = 'auto'
+      video.preload = 'metadata' // Start with metadata only
       // Don't set crossOrigin for local files - it can cause CORS issues
-      
+
       // Make video visible but tiny - some browsers need it visible to render frames
       video.style.position = 'fixed'
       video.style.top = '0'
@@ -99,6 +106,8 @@ export function CreateExerciseModal({ open, onOpenChange, onSuccess }: CreateExe
 
       // Add video to DOM temporarily so it can render frames
       document.body.appendChild(video)
+
+      console.log('Starting video frame extraction for:', videoFile.name, 'size:', videoFile.size)
 
       let objectUrl: string | null = null
       let resolved = false
@@ -187,20 +196,32 @@ export function CreateExerciseModal({ open, onOpenChange, onSuccess }: CreateExe
       }
 
       video.onloadedmetadata = () => {
-        // Seek to 1 second or 25% of video duration, whichever is smaller
-        const seekTime = Math.min(1, Math.max(0.1, video.duration * 0.25))
+        console.log('Video metadata loaded, duration:', video.duration, 'dimensions:', video.videoWidth, 'x', video.videoHeight)
+
+        // For very short videos, seek to 10% of duration, otherwise 1 second or 25%
+        const seekTime = video.duration < 2
+          ? Math.max(0.1, video.duration * 0.1)
+          : Math.min(1, Math.max(0.1, video.duration * 0.25))
+
+        console.log('Seeking to time:', seekTime, 'seconds')
         video.currentTime = seekTime
       }
 
       video.onseeked = async () => {
+        console.log('Video seeked, readyState:', video.readyState, 'dimensions:', video.videoWidth, 'x', video.videoHeight)
+
         // Wait for video to be ready and have valid dimensions
         const waitForReady = () => {
           if (video.readyState >= 2 && video.videoWidth > 0 && video.videoHeight > 0) {
-            // Play video briefly to ensure frame is rendered (required by some browsers)
+            console.log('Video ready for frame capture')
+
+            // Try to play video briefly to ensure frame is rendered (required by some browsers)
             video.play().then(() => {
+              console.log('Video playing briefly for frame rendering')
               // Wait longer for frame to actually render
               setTimeout(() => {
                 video.pause()
+                console.log('Video paused, capturing frame')
                 // Additional delay to ensure frame is fully rendered before capture
                 setTimeout(() => {
                   // Double-check video is paused and ready
@@ -212,14 +233,17 @@ export function CreateExerciseModal({ open, onOpenChange, onSuccess }: CreateExe
                   }
                 }, 300)
               }, 100)
-            }).catch(() => {
-              // If play fails, wait a bit then try capturing
+            }).catch((playError) => {
+              console.warn('Video play failed:', playError)
+              // If play fails, try capturing directly after a delay
               setTimeout(() => {
+                console.log('Attempting direct frame capture after play failure')
                 captureFrame()
               }, 500)
             })
           } else {
-            setTimeout(waitForReady, 100)
+            console.log('Video not ready, waiting...', 'readyState:', video.readyState)
+            setTimeout(waitForReady, 200) // Increased delay for mobile
           }
         }
         waitForReady()
@@ -246,14 +270,14 @@ export function CreateExerciseModal({ open, onOpenChange, onSuccess }: CreateExe
       objectUrl = URL.createObjectURL(videoFile)
       video.src = objectUrl
 
-      // Timeout after 10 seconds
+      // Timeout after 30 seconds (longer for mobile devices)
       setTimeout(() => {
         if (!resolved) {
           resolved = true
           cleanup()
-          reject(new Error('Frame extraction timeout'))
+          reject(new Error('Frame extraction timeout - video may be too large or unsupported format'))
         }
-      }, 10000)
+      }, 30000)
     })
   }
 
@@ -269,10 +293,21 @@ export function CreateExerciseModal({ open, onOpenChange, onSuccess }: CreateExe
         const extractedImage = await extractFrameFromVideo(file)
         if (extractedImage) {
           setExtractedImageFile(extractedImage)
+        } else {
+          // If extraction returns null (e.g., file too large), don't show error
+          console.log('Frame extraction skipped (file too large or unsupported)')
         }
       } catch (error: any) {
         console.error('Error extracting frame:', error)
-        setError(`Error al extraer imagen del video: ${error.message || 'Intenta subir una imagen manualmente'}`)
+
+        // For mobile devices, provide a helpful message and don't block the user
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+        if (isMobile) {
+          console.log('Mobile device detected, extraction failed but allowing manual image upload')
+          // Don't set error for mobile - just log and allow manual upload
+        } else {
+          setError(`Error al extraer imagen del video: ${error.message || 'Intenta subir una imagen manualmente'}`)
+        }
       } finally {
         setExtractingFrame(false)
       }
