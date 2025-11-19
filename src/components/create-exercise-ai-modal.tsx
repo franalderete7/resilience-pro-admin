@@ -464,8 +464,14 @@ export function CreateExerciseAIModal({ open, onOpenChange, onSuccess }: CreateE
         'output.mp4'
       ])
 
-      const data = await ffmpeg.readFile('output.mp4')
-      const compressedBlob = new Blob([data], { type: 'video/mp4' })
+      const data = await ffmpeg.readFile('output.mp4') as Uint8Array
+      // Fix for Vercel/TypeScript error regarding SharedArrayBuffer vs ArrayBuffer
+      const arrayBuffer = data.buffer.slice(
+        data.byteOffset,
+        data.byteOffset + data.byteLength
+      ) as ArrayBuffer
+
+      const compressedBlob = new Blob([arrayBuffer], { type: 'video/mp4' })
       // Use original name but ensure mp4 extension
       const newName = file.name.replace(/\.[^/.]+$/, '') + '.mp4'
       return new File([compressedBlob], newName, { type: 'video/mp4' })
