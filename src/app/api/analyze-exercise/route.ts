@@ -7,28 +7,20 @@ const groq = new Groq({
 
 export async function POST(request: NextRequest) {
   try {
-    const formData = await request.formData()
-    const videoFile = formData.get('video') as File | null
-    const imageFile = formData.get('image') as File | null
+    const body = await request.json()
+    const fileName = body.filename || ''
 
-    if (!videoFile) {
+    if (!fileName) {
       return NextResponse.json(
-        { error: 'Se requiere un archivo de video' },
+        { error: 'Se requiere el nombre del archivo' },
         { status: 400 }
       )
     }
 
-    // Extract filename without extension
-    const videoFileName = videoFile.name.replace(/\.[^/.]+$/, '')
-    const imageFileName = imageFile?.name.replace(/\.[^/.]+$/, '') || ''
-
-    // Use the filename as the primary source
-    const fileName = videoFileName || imageFileName
-
     const prompt = `Analiza el siguiente nombre de ejercicio y proporciona información detallada en español.
-
+    
 Nombre del archivo: "${fileName}"
-
+    
 Basándote en el nombre del ejercicio, genera la siguiente información en formato JSON:
 
 {

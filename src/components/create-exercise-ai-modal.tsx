@@ -21,6 +21,8 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Sparkles, Loader2 } from 'lucide-react'
+import { FFmpeg } from '@ffmpeg/ffmpeg'
+import { fetchFile, toBlobURL } from '@ffmpeg/util'
 
 const exerciseCategories = [
   { value: 'strength', label: 'Fuerza' },
@@ -63,6 +65,8 @@ export function CreateExerciseAIModal({ open, onOpenChange, onSuccess }: CreateE
   const [extractedImageFile, setExtractedImageFile] = useState<File | null>(null)
   const [extractingFrame, setExtractingFrame] = useState(false)
   const [analyzed, setAnalyzed] = useState(false)
+  const [compressing, setCompressing] = useState(false)
+  const [compressionProgress, setCompressionProgress] = useState(0)
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -344,15 +348,14 @@ export function CreateExerciseAIModal({ open, onOpenChange, onSuccess }: CreateE
     setError(null)
 
     try {
-      const formDataToSend = new FormData()
-      formDataToSend.append('video', videoFile)
-      if (imageFile) {
-        formDataToSend.append('image', imageFile)
-      }
-
       const response = await fetch('/api/analyze-exercise', {
         method: 'POST',
-        body: formDataToSend,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          filename: videoFile.name.replace(/\.[^/.]+$/, ''), // Send filename without extension
+        }),
       })
 
       if (!response.ok) {
@@ -426,6 +429,56 @@ export function CreateExerciseAIModal({ open, onOpenChange, onSuccess }: CreateE
     setAnalyzed(false)
   }
 
+  const compressVideo = async (file: File): Promise<File> => {
+    // Only compress if larger than 7MB
+    if (file.size < 7 * 1024 * 1024) {
+      return file
+    }
+
+    setCompressing(true)
+    setCompressionProgress(0)
+    
+    const ffmpeg = new FFmpeg()
+    try {
+      const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd'
+      await ffmpeg.load({
+        coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
+        wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
+      })
+
+      ffmpeg.on('progress', ({ progress }) => {
+        setCompressionProgress(Math.round(progress * 100))
+      })
+
+      await ffmpeg.writeFile('input.mp4', await fetchFile(file))
+
+      // Compress: CRF 28, 720p, ultrafast preset for speed
+      await ffmpeg.exec([
+        '-i', 'input.mp4',
+        '-vf', 'scale=-2:720', 
+        '-c:v', 'libx264',
+        '-crf', '28',
+        '-preset', 'ultrafast',
+        '-c:a', 'aac',
+        '-b:a', '128k',
+        'output.mp4'
+      ])
+
+      const data = await ffmpeg.readFile('output.mp4')
+      const compressedBlob = new Blob([data], { type: 'video/mp4' })
+      // Use original name but ensure mp4 extension
+      const newName = file.name.replace(/\.[^/.]+$/, '') + '.mp4'
+      return new File([compressedBlob], newName, { type: 'video/mp4' })
+    } catch (error) {
+      console.error('Compression failed:', error)
+      return file // Return original if compression fails
+    } finally {
+      setCompressing(false)
+      setCompressionProgress(0)
+      ffmpeg.terminate() 
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
@@ -437,8 +490,11 @@ export function CreateExerciseAIModal({ open, onOpenChange, onSuccess }: CreateE
 
       // Upload video
       if (videoFile) {
-        const fileName = `${Date.now()}-${videoFile.name}`
-        videoUrl = await uploadFile(videoFile, 'exercise-videos', fileName)
+        // Compress if needed
+        const fileToUpload = await compressVideo(videoFile)
+        
+        const fileName = `${Date.now()}-${fileToUpload.name}`
+        videoUrl = await uploadFile(fileToUpload, 'exercise-videos', fileName)
         if (!videoUrl) {
           throw new Error('Error al subir el video')
         }
@@ -700,7 +756,7 @@ export function CreateExerciseAIModal({ open, onOpenChange, onSuccess }: CreateE
               disabled={loading || !analyzed}
               className="flex-1 bg-white text-black hover:bg-zinc-200 min-h-[44px] touch-manipulation text-base"
             >
-              {loading ? 'Creando...' : 'Crear Ejercicio'}
+              {compressing ? `Comprimiendo ${compressionProgress}%...` : loading ? 'Guardando...' : 'Crear Ejercicio'}
             </Button>
           </div>
         </form>

@@ -195,6 +195,7 @@ export function ExerciseList() {
                   <img
                     src={exercise.image_url}
                     alt={exercise.name}
+                    crossOrigin="anonymous"
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
                   />
                 </div>
