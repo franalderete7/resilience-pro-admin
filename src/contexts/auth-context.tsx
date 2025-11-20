@@ -20,20 +20,48 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Check active sessions and sets the user
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null)
-      if (session?.user) {
-        checkAdminRole(session.user.id)
-      } else {
-        setLoading(false)
+    let mounted = true
+
+    // Safety timeout to prevent infinite loading
+    const loadingTimeout = setTimeout(() => {
+      if (mounted) {
+        setLoading((prev) => {
+          if (prev) {
+            console.warn('Auth loading timed out, forcing completion')
+            return false
+          }
+          return prev
+        })
       }
-    })
+    }, 8000) // 8 seconds max load time (increased for slow connections)
+
+    const initAuth = async () => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession()
+        if (error) throw error
+
+        if (mounted) {
+          setUser(session?.user ?? null)
+          if (session?.user) {
+            await checkAdminRole(session.user.id)
+          } else {
+            setLoading(false)
+          }
+        }
+      } catch (error) {
+        console.error('Error getting session:', error)
+        if (mounted) setLoading(false)
+      }
+    }
+
+    initAuth()
 
     // Listen for auth changes
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (!mounted) return
+
       setUser(session?.user ?? null)
       if (session?.user) {
         await checkAdminRole(session.user.id)
@@ -43,7 +71,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     })
 
-    return () => subscription.unsubscribe()
+    return () => {
+      mounted = false
+      clearTimeout(loadingTimeout)
+      subscription.unsubscribe()
+    }
   }, [])
 
   const checkAdminRole = async (userId: string) => {
