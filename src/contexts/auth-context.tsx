@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import { User } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
+import { logger } from '@/lib/logger'
 
 interface AuthContextType {
   user: User | null
@@ -21,35 +22,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let mounted = true
+    const startTime = Date.now()
 
     // Safety timeout to prevent infinite loading
     const loadingTimeout = setTimeout(() => {
       if (mounted) {
         setLoading((prev) => {
           if (prev) {
-            console.warn('Auth loading timed out, forcing completion')
+            logger.warn('Auth loading timed out, forcing completion', {
+              duration: Date.now() - startTime,
+            })
             return false
           }
           return prev
         })
       }
-    }, 8000) // 8 seconds max load time (increased for slow connections)
+    }, 15000) // 15 seconds max load time
 
     const initAuth = async () => {
       try {
+        logger.debug('Starting auth initialization')
         const { data: { session }, error } = await supabase.auth.getSession()
+        
         if (error) throw error
 
         if (mounted) {
-          setUser(session?.user ?? null)
           if (session?.user) {
+            logger.debug('Session found, checking admin role', { userId: session.user.id })
+            setUser(session.user)
             await checkAdminRole(session.user.id)
           } else {
+            logger.debug('No session found')
+            setUser(null)
             setLoading(false)
           }
         }
       } catch (error) {
-        console.error('Error getting session:', error)
+        logger.error('Error getting session:', error)
         if (mounted) setLoading(false)
       }
     }
@@ -59,8 +68,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Listen for auth changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mounted) return
+      
+      logger.debug('Auth state changed', { event, userId: session?.user?.id })
 
       setUser(session?.user ?? null)
       if (session?.user) {
@@ -89,13 +100,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (error || !data) {
         // Not an admin, sign out
+        logger.warn('User is not an admin, signing out', { userId })
         await supabase.auth.signOut()
         setAdminUser(null)
       } else {
+        logger.info('Admin verified', { userId })
         setAdminUser(data)
       }
     } catch (error) {
-      console.error('Error checking admin role:', error)
+      logger.error('Error checking admin role:', error)
       await supabase.auth.signOut()
       setAdminUser(null)
     } finally {
@@ -104,12 +117,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   const signIn = async (email: string, password: string) => {
+    logger.debug('Attempting sign in', { email })
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     })
 
     if (error) {
+      logger.error('Sign in failed', error)
       return { error }
     }
 
@@ -121,6 +136,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   const signOut = async () => {
+    logger.debug('Signing out')
     await supabase.auth.signOut()
     setUser(null)
     setAdminUser(null)

@@ -1,6 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Groq from 'groq-sdk'
 
+// Simple server-side logger to avoid importing client-heavy logger if not needed,
+// or we can import the shared one if it's environment agnostic.
+// Let's stick to console for server but formatted better.
+const logError = (msg: string, err: any) => {
+  console.error(JSON.stringify({
+    level: 'error',
+    message: msg,
+    error: err instanceof Error ? err.message : err,
+    stack: err instanceof Error ? err.stack : undefined,
+    timestamp: new Date().toISOString()
+  }))
+}
+
 const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY,
 })
@@ -74,7 +87,7 @@ Responde SOLO con el JSON, sin texto adicional.`
     // Extract JSON from response (in case there's extra text)
     const jsonMatch = responseText.match(/\{[\s\S]*\}/)
     if (!jsonMatch) {
-      throw new Error('No se pudo extraer JSON de la respuesta')
+      throw new Error('No se pudo extraer JSON de la respuesta: ' + responseText.substring(0, 100))
     }
 
     const analysisResult = JSON.parse(jsonMatch[0])
@@ -84,7 +97,7 @@ Responde SOLO con el JSON, sin texto adicional.`
       data: analysisResult,
     })
   } catch (error: any) {
-    console.error('Error analyzing exercise:', error)
+    logError('Error analyzing exercise:', error)
     return NextResponse.json(
       { error: error.message || 'Error al analizar el ejercicio' },
       { status: 500 }

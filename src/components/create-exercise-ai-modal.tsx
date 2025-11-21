@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useAuth } from '@/contexts/auth-context'
 import { supabase } from '@/lib/supabase'
+import { logger } from '@/lib/logger'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -81,7 +82,7 @@ export function CreateExerciseAIModal({ open, onOpenChange, onSuccess }: CreateE
     // Check if video file is reasonable size (under 100MB for mobile)
     const maxSize = 100 * 1024 * 1024 // 100MB
     if (videoFile.size > maxSize) {
-      console.warn('Video file too large for mobile extraction:', videoFile.size, 'bytes')
+      logger.warn('Video file too large for mobile extraction:', { size: videoFile.size })
       return null // Skip extraction for large files
     }
 
@@ -114,7 +115,7 @@ export function CreateExerciseAIModal({ open, onOpenChange, onSuccess }: CreateE
       // Add video to DOM temporarily so it can render frames
       document.body.appendChild(video)
 
-      console.log('Starting video frame extraction for:', videoFile.name, 'size:', videoFile.size)
+      logger.debug('Starting video frame extraction', { fileName: videoFile.name, size: videoFile.size })
 
       let objectUrl: string | null = null
       let resolved = false
@@ -167,12 +168,12 @@ export function CreateExerciseAIModal({ open, onOpenChange, onSuccess }: CreateE
           const averageBrightness = totalBrightness / pixelCount
 
           // Log brightness for debugging
-          console.log('Frame brightness:', averageBrightness, 'Video dimensions:', video.videoWidth, 'x', video.videoHeight)
+          logger.debug('Frame captured', { brightness: averageBrightness, width: video.videoWidth, height: video.videoHeight })
 
           // If average brightness is too low (very dark/black), warn but don't fail
           // Some videos might have dark frames - let user decide
           if (averageBrightness < 3) {
-            console.warn('Warning: Extracted frame appears very dark (brightness:', averageBrightness, ')')
+            logger.warn('Extracted frame appears very dark', { brightness: averageBrightness })
             // Don't throw error - let it proceed, user can upload custom image if needed
           }
 
@@ -203,32 +204,28 @@ export function CreateExerciseAIModal({ open, onOpenChange, onSuccess }: CreateE
       }
 
       video.onloadedmetadata = () => {
-        console.log('Video metadata loaded, duration:', video.duration, 'dimensions:', video.videoWidth, 'x', video.videoHeight)
+        logger.debug('Video metadata loaded', { duration: video.duration, width: video.videoWidth, height: video.videoHeight })
 
         // For very short videos, seek to 10% of duration, otherwise 1 second or 25%
         const seekTime = video.duration < 2
           ? Math.max(0.1, video.duration * 0.1)
           : Math.min(1, Math.max(0.1, video.duration * 0.25))
 
-        console.log('Seeking to time:', seekTime, 'seconds')
+        logger.debug('Seeking to time', { seekTime })
         video.currentTime = seekTime
       }
 
       video.onseeked = async () => {
-        console.log('Video seeked, readyState:', video.readyState, 'dimensions:', video.videoWidth, 'x', video.videoHeight)
+        logger.debug('Video seeked', { readyState: video.readyState })
 
         // Wait for video to be ready and have valid dimensions
         const waitForReady = () => {
           if (video.readyState >= 2 && video.videoWidth > 0 && video.videoHeight > 0) {
-            console.log('Video ready for frame capture')
-
             // Try to play video briefly to ensure frame is rendered (required by some browsers)
             video.play().then(() => {
-              console.log('Video playing briefly for frame rendering')
               // Wait longer for frame to actually render
               setTimeout(() => {
                 video.pause()
-                console.log('Video paused, capturing frame')
                 // Additional delay to ensure frame is fully rendered before capture
                 setTimeout(() => {
                   // Double-check video is paused and ready
@@ -241,15 +238,14 @@ export function CreateExerciseAIModal({ open, onOpenChange, onSuccess }: CreateE
                 }, 300)
               }, 100)
             }).catch((playError) => {
-              console.warn('Video play failed:', playError)
+              logger.warn('Video play failed, attempting direct capture', { error: playError })
               // If play fails, try capturing directly after a delay
               setTimeout(() => {
-                console.log('Attempting direct frame capture after play failure')
                 captureFrame()
               }, 500)
             })
           } else {
-            console.log('Video not ready, waiting...', 'readyState:', video.readyState)
+            logger.debug('Video not ready, waiting...', { readyState: video.readyState })
             setTimeout(waitForReady, 200) // Increased delay for mobile
           }
         }
@@ -303,15 +299,15 @@ export function CreateExerciseAIModal({ open, onOpenChange, onSuccess }: CreateE
           setExtractedImageFile(extractedImage)
         } else {
           // If extraction returns null (e.g., file too large), don't show error
-          console.log('Frame extraction skipped (file too large or unsupported)')
+          logger.info('Frame extraction skipped (file too large or unsupported)')
         }
       } catch (error: any) {
-        console.error('Error extracting frame:', error)
+        logger.error('Error extracting frame', error)
 
         // For mobile devices, provide a helpful message and don't block the user
         const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
         if (isMobile) {
-          console.log('Mobile device detected, extraction failed but allowing manual image upload')
+          logger.info('Mobile device detected, extraction failed but allowing manual image upload')
           // Don't set error for mobile - just log and allow manual upload
         } else {
           setError(`Error al extraer imagen del video: ${error.message || 'Intenta subir una imagen manualmente'}`)
@@ -348,6 +344,7 @@ export function CreateExerciseAIModal({ open, onOpenChange, onSuccess }: CreateE
     setError(null)
 
     try {
+      logger.debug('Starting AI analysis', { fileName: videoFile.name })
       const response = await fetch('/api/analyze-exercise', {
         method: 'POST',
         headers: {
@@ -364,6 +361,8 @@ export function CreateExerciseAIModal({ open, onOpenChange, onSuccess }: CreateE
 
       const result = await response.json()
       const data = result.data
+      
+      logger.debug('AI analysis completed', { data })
 
       // Pre-fill form with AI results
       setFormData({
@@ -381,6 +380,7 @@ export function CreateExerciseAIModal({ open, onOpenChange, onSuccess }: CreateE
 
       setAnalyzed(true)
     } catch (err: any) {
+      logger.error('Error in analyzeWithAI', err)
       setError(err.message || 'Error al analizar con IA')
     } finally {
       setAnalyzing(false)
@@ -393,6 +393,7 @@ export function CreateExerciseAIModal({ open, onOpenChange, onSuccess }: CreateE
     fileName: string
   ): Promise<string | null> => {
     try {
+      logger.debug('Uploading file', { bucket, fileName, size: file.size })
       const { data, error } = await supabase.storage
         .from(bucket)
         .upload(fileName, file, {
@@ -408,7 +409,7 @@ export function CreateExerciseAIModal({ open, onOpenChange, onSuccess }: CreateE
 
       return publicUrl
     } catch (error) {
-      console.error('Error uploading file:', error)
+      logger.error('Error uploading file:', error)
       return null
     }
   }
@@ -440,6 +441,7 @@ export function CreateExerciseAIModal({ open, onOpenChange, onSuccess }: CreateE
     
     const ffmpeg = new FFmpeg()
     try {
+      logger.debug('Starting video compression', { originalSize: file.size })
       const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd'
       await ffmpeg.load({
         coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
@@ -474,9 +476,17 @@ export function CreateExerciseAIModal({ open, onOpenChange, onSuccess }: CreateE
       const compressedBlob = new Blob([arrayBuffer], { type: 'video/mp4' })
       // Use original name but ensure mp4 extension
       const newName = file.name.replace(/\.[^/.]+$/, '') + '.mp4'
-      return new File([compressedBlob], newName, { type: 'video/mp4' })
+      const compressedFile = new File([compressedBlob], newName, { type: 'video/mp4' })
+      
+      logger.info('Video compression complete', { 
+        originalSize: file.size, 
+        compressedSize: compressedFile.size,
+        reduction: `${Math.round((1 - compressedFile.size / file.size) * 100)}%`
+      })
+      
+      return compressedFile
     } catch (error) {
-      console.error('Compression failed:', error)
+      logger.error('Compression failed, using original file', error)
       return file // Return original if compression fails
     } finally {
       setCompressing(false)
@@ -491,6 +501,7 @@ export function CreateExerciseAIModal({ open, onOpenChange, onSuccess }: CreateE
     setError(null)
 
     try {
+      logger.info('Submitting exercise creation form')
       let videoUrl = null
       let imageUrl = null
 
@@ -530,6 +541,7 @@ export function CreateExerciseAIModal({ open, onOpenChange, onSuccess }: CreateE
       const primaryCategory = formData.categories[0] || null
 
       // Create exercise record
+      logger.debug('Creating exercise record in DB')
       const { error: insertError } = await supabase.from('exercises').insert({
         name: formData.name,
         description: formData.description || null,
@@ -544,10 +556,12 @@ export function CreateExerciseAIModal({ open, onOpenChange, onSuccess }: CreateE
 
       if (insertError) throw insertError
 
+      logger.info('Exercise created successfully')
       resetForm()
       onSuccess()
       onOpenChange(false)
     } catch (err: any) {
+      logger.error('Error creating exercise', err)
       setError(err.message || 'Error al crear el ejercicio')
     } finally {
       setLoading(false)
