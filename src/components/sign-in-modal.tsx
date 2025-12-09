@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/auth-context'
 import {
   Dialog,
@@ -17,21 +17,39 @@ export function SignInModal() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
-  const [loading, setLoading] = useState(false)
-  const { signIn } = useAuth()
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const { signIn, loading: authLoading, adminUser } = useAuth()
+
+  // Log state changes for debugging
+  useEffect(() => {
+    console.log('[SignInModal] State:', { isSubmitting, authLoading, hasAdminUser: !!adminUser })
+  }, [isSubmitting, authLoading, adminUser])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
-    setLoading(true)
+    setIsSubmitting(true)
+    console.log('[SignInModal] Submitting sign in...')
 
-    const { error } = await signIn(email, password)
+    try {
+      const { error } = await signIn(email, password)
 
-    if (error) {
-      setError(error.message || 'Failed to sign in')
-      setLoading(false)
+      if (error) {
+        console.log('[SignInModal] Sign in error:', error)
+        setError(error.message || 'Error al iniciar sesión')
+        setIsSubmitting(false)
+      } else {
+        console.log('[SignInModal] Sign in successful, waiting for auth state update...')
+        // Don't set isSubmitting to false here - let the auth context handle the transition
+      }
+    } catch (err: any) {
+      console.error('[SignInModal] Exception:', err)
+      setError(err.message || 'Error inesperado')
+      setIsSubmitting(false)
     }
   }
+
+  const isLoading = isSubmitting || authLoading
 
   return (
     <Dialog open={true}>
@@ -78,10 +96,10 @@ export function SignInModal() {
           )}
           <Button
             type="submit"
-            disabled={loading}
+            disabled={isLoading}
             className="w-full bg-white text-black hover:bg-zinc-200"
           >
-            {loading ? 'Iniciando sesión...' : 'Iniciar Sesión'}
+            {isLoading ? 'Iniciando sesión...' : 'Iniciar Sesión'}
           </Button>
         </form>
       </DialogContent>

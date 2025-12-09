@@ -118,21 +118,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signIn = async (email: string, password: string) => {
     logger.debug('Attempting sign in', { email })
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
+    setLoading(true)
+    
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
 
-    if (error) {
-      logger.error('Sign in failed', error)
-      return { error }
+      if (error) {
+        logger.error('Sign in failed', error)
+        setLoading(false)
+        return { error }
+      }
+
+      if (data.user) {
+        logger.debug('Sign in successful, checking admin role', { userId: data.user.id })
+        setUser(data.user)
+        await checkAdminRole(data.user.id)
+      } else {
+        logger.warn('Sign in returned no user')
+        setLoading(false)
+      }
+
+      return { error: null }
+    } catch (err) {
+      logger.error('Sign in exception', err)
+      setLoading(false)
+      return { error: err }
     }
-
-    if (data.user) {
-      await checkAdminRole(data.user.id)
-    }
-
-    return { error: null }
   }
 
   const signOut = async () => {

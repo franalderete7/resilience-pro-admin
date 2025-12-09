@@ -37,6 +37,7 @@ export function ExerciseList() {
   const [isCreateAIOpen, setIsCreateAIOpen] = useState(false)
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState<Exercise | null>(null)
+  const [videoError, setVideoError] = useState<string | null>(null)
 
   useEffect(() => {
     fetchExercises()
@@ -61,6 +62,7 @@ export function ExerciseList() {
   const handleExerciseClick = (exercise: Exercise) => {
     if (exercise.video_url) {
       setSelectedExercise(exercise)
+      setVideoError(null)
       setIsVideoOpen(true)
     }
   }
@@ -252,15 +254,40 @@ export function ExerciseList() {
             </DialogTitle>
           </DialogHeader>
           {selectedExercise?.video_url && (
-            <div className="aspect-video w-full bg-black rounded-lg overflow-hidden">
-              <video
-                src={selectedExercise.video_url}
-                controls
-                className="w-full h-full"
-                autoPlay
-              >
-                Tu navegador no soporta el elemento de video.
-              </video>
+            <div className="aspect-video w-full bg-black rounded-lg overflow-hidden relative">
+              {videoError ? (
+                <div className="w-full h-full flex flex-col items-center justify-center text-center p-4">
+                  <p className="text-red-400 mb-2">Error al cargar el video</p>
+                  <p className="text-zinc-500 text-sm mb-4">{videoError}</p>
+                  <a
+                    href={selectedExercise.video_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-400 underline text-sm"
+                  >
+                    Abrir video en nueva pestaña
+                  </a>
+                </div>
+              ) : (
+                <video
+                  key={selectedExercise.video_url}
+                  controls
+                  className="w-full h-full"
+                  autoPlay
+                  playsInline
+                  onError={(e) => {
+                    console.error('[Video] Error loading video:', selectedExercise.video_url, e)
+                    setVideoError('No se pudo cargar el video. Puede ser un problema de CORS o el archivo no existe.')
+                  }}
+                  onLoadStart={() => {
+                    console.log('[Video] Loading started:', selectedExercise.video_url)
+                  }}
+                >
+                  <source src={selectedExercise.video_url} type="video/mp4" />
+                  <source src={selectedExercise.video_url} type="video/quicktime" />
+                  Tu navegador no soporta el elemento de video.
+                </video>
+              )}
             </div>
           )}
           {selectedExercise?.description && (
