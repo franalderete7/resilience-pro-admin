@@ -43,6 +43,15 @@ El método de planificación sigue la siguiente línea de trabajo. Esta es la ba
    - Categorías: accessories
    - Trabajo de hipertrofia y acabado muscular
 
+CANTIDAD DE EJERCICIOS POR BLOQUE:
+- Cada bloque debe tener entre 2 y 4 ejercicios (esto es la norma estándar)
+- Activación 1: 2-3 ejercicios de movilidad
+- Activación 2: 2-3 ejercicios de core/estabilidad
+- Bloque 1: 2-3 ejercicios de velocidad/potencia
+- Bloque 2: 2 ejercicios (1 inferior + 1 superior)
+- Bloque 3: 2 ejercicios (1 inferior unilateral + 1 superior unilateral)
+- Bloque 4: 2-4 ejercicios accesorios
+
 MÉTODOS DE ENTRENAMIENTO:
 
 Según el objetivo del usuario, aplicar los siguientes métodos:
@@ -161,49 +170,42 @@ FORMATO DE RESPUESTA JSON:
           "block_type": "warmup",
           "sets": 1-2,
           "rest_between_exercises": 30,
-          "exercises": [
-            {
-              "exercise_id": número,
-              "reps": 8-15,
-              "weight_level": "no_weight|light",
-              "exercise_order": 1
-            }
-          ]
+          "exercises": [/* 2-3 ejercicios de movilidad */]
         },
         {
           "name": "Activación 2 - Core y Estabilidad",
           "block_type": "warmup",
           "sets": 2,
           "rest_between_exercises": 30,
-          "exercises": [...]
+          "exercises": [/* 2-3 ejercicios de core */]
         },
         {
           "name": "Bloque 1 - Velocidad y Potencia",
           "block_type": "main",
           "sets": 3-4,
           "rest_between_exercises": 120-180,
-          "exercises": [...]
+          "exercises": [/* 2-3 ejercicios explosivos */]
         },
         {
           "name": "Bloque 2 - Fuerza Bilateral",
           "block_type": "main",
           "sets": 3-4,
           "rest_between_exercises": 90-120,
-          "exercises": [...]
+          "exercises": [/* 2 ejercicios: 1 inferior + 1 superior */]
         },
         {
           "name": "Bloque 3 - Fuerza Unilateral",
           "block_type": "main",
           "sets": 3,
           "rest_between_exercises": 90,
-          "exercises": [...]
+          "exercises": [/* 2 ejercicios: 1 inferior + 1 superior unilateral */]
         },
         {
           "name": "Bloque 4 - Accesorios",
           "block_type": "main",
           "sets": 2-3,
           "rest_between_exercises": 60,
-          "exercises": [...]
+          "exercises": [/* 2-4 ejercicios accesorios */]
         }
       ]
     }
