@@ -258,13 +258,15 @@ export function ExerciseList() {
       )}
 
       <Dialog open={isVideoOpen} onOpenChange={setIsVideoOpen}>
-        <DialogContent className="max-w-4xl h-full sm:h-auto bg-zinc-900 border-zinc-800 text-white">
-          <DialogHeader>
+        <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col bg-zinc-900 border-zinc-800 text-white p-0 overflow-hidden">
+          <DialogHeader className="p-6 pb-2 shrink-0">
             <DialogTitle className="text-white text-2xl font-bold flex items-center gap-2">
               {selectedExercise?.name}
             </DialogTitle>
           </DialogHeader>
-          {selectedExercise?.video_url && (
+          
+          <div className="flex-1 overflow-y-auto p-6 pt-2">
+            {selectedExercise?.video_url && (
             <div className="aspect-video w-full bg-black rounded-xl overflow-hidden relative shadow-2xl border border-zinc-800">
               {videoError ? (
                 <div className="w-full h-full flex flex-col items-center justify-center text-center p-4">
@@ -403,6 +405,7 @@ export function ExerciseList() {
               </div>
             </div>
           )}
+          </div>
         </DialogContent>
       </Dialog>
 
