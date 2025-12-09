@@ -259,32 +259,60 @@ export function ExerciseList() {
                 <div className="w-full h-full flex flex-col items-center justify-center text-center p-4">
                   <p className="text-red-400 mb-2">Error al cargar el video</p>
                   <p className="text-zinc-500 text-sm mb-4">{videoError}</p>
-                  <a
-                    href={selectedExercise.video_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-400 underline text-sm"
-                  >
-                    Abrir video en nueva pestaña
-                  </a>
+                  <div className="flex flex-col gap-2">
+                    <a
+                      href={selectedExercise.video_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm"
+                    >
+                      Abrir video en nueva pestaña
+                    </a>
+                    <button
+                      onClick={() => setVideoError(null)}
+                      className="text-zinc-400 hover:text-white text-sm underline"
+                    >
+                      Reintentar
+                    </button>
+                  </div>
                 </div>
               ) : (
                 <video
                   key={selectedExercise.video_url}
                   controls
+                  controlsList="nodownload"
                   className="w-full h-full"
                   autoPlay
                   playsInline
+                  preload="metadata"
+                  crossOrigin="anonymous"
                   onError={(e) => {
-                    console.error('[Video] Error loading video:', selectedExercise.video_url, e)
-                    setVideoError('No se pudo cargar el video. Puede ser un problema de CORS o el archivo no existe.')
+                    const video = e.currentTarget
+                    console.error('[Video] Error loading video:', {
+                      url: selectedExercise.video_url,
+                      error: video.error,
+                      networkState: video.networkState,
+                      readyState: video.readyState,
+                    })
+                    // Try without crossOrigin as fallback
+                    if (video.crossOrigin === 'anonymous') {
+                      console.log('[Video] Retrying without crossOrigin...')
+                      video.crossOrigin = ''
+                      video.load()
+                    } else {
+                      setVideoError('No se pudo cargar el video. Intenta abrirlo en una nueva pestaña.')
+                    }
                   }}
                   onLoadStart={() => {
                     console.log('[Video] Loading started:', selectedExercise.video_url)
                   }}
+                  onCanPlay={() => {
+                    console.log('[Video] Can play:', selectedExercise.video_url)
+                  }}
                 >
                   <source src={selectedExercise.video_url} type="video/mp4" />
                   <source src={selectedExercise.video_url} type="video/quicktime" />
+                  <source src={selectedExercise.video_url} type="video/mov" />
                   Tu navegador no soporta el elemento de video.
                 </video>
               )}
