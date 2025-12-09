@@ -12,7 +12,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { CreateExerciseModal } from '@/components/create-exercise-modal'
 import { CreateExerciseAIModal } from '@/components/create-exercise-ai-modal'
-import { Plus, Sparkles, Trash2 } from 'lucide-react'
+import { Plus, Sparkles, Trash2, Activity, Dumbbell, ListOrdered, PlayCircle, Tag, BicepsFlexed } from 'lucide-react'
 import { CATEGORY_LABELS, DIFFICULTY_LABELS } from '@/lib/constants/exercise-categories'
 
 interface Exercise {
@@ -192,83 +192,65 @@ export function ExerciseList() {
           {exercises.map((exercise) => (
             <Card
               key={exercise.exercise_id}
-              className="bg-zinc-800 border-zinc-700 text-white cursor-pointer hover:border-zinc-600 hover:shadow-lg transition-all duration-200 group flex flex-col relative"
+              className="bg-zinc-900 border-zinc-800 text-white cursor-pointer hover:border-zinc-700 hover:shadow-xl transition-all duration-300 group flex flex-col relative overflow-hidden"
               onClick={() => handleExerciseClick(exercise)}
             >
-              {/* Delete button - top right - always visible on mobile */}
+              {/* Delete button - top right */}
               <button
                 onClick={(e) => handleDeleteClick(e, exercise)}
                 disabled={deletingId === exercise.exercise_id}
-                className="absolute top-2 right-2 z-10 p-2 sm:p-1.5 rounded-full bg-red-600 hover:bg-red-700 active:bg-red-800 text-white opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center"
+                className="absolute top-2 right-2 z-20 p-2 rounded-full bg-red-600/90 hover:bg-red-600 text-white opacity-0 group-hover:opacity-100 transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed backdrop-blur-sm"
                 title="Eliminar ejercicio"
               >
-                <Trash2 className="h-5 w-5 sm:h-4 sm:w-4" />
+                <Trash2 className="h-4 w-4" />
               </button>
 
+              {/* Image Container */}
+              <div className="aspect-video w-full overflow-hidden bg-zinc-950 relative">
               {exercise.image_url ? (
-                <div className="aspect-video w-full overflow-hidden rounded-t-lg bg-zinc-900">
                   <img
                     src={exercise.image_url}
                     alt={exercise.name}
                     crossOrigin="anonymous"
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                   />
-                </div>
               ) : (
-                <div className="aspect-video w-full overflow-hidden rounded-t-lg bg-gradient-to-br from-zinc-800 to-zinc-900 flex items-center justify-center">
-                  <span className="text-zinc-600 text-4xl">💪</span>
+                  <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-zinc-800 to-zinc-900">
+                    <Dumbbell className="h-12 w-12 text-zinc-700" />
                 </div>
-              )}
-              <CardHeader className="p-4 pb-2">
-                <CardTitle className="text-white text-base font-semibold line-clamp-2 leading-tight mb-1">
-                  {exercise.name}
-                </CardTitle>
-                {exercise.description && (
-                  <CardDescription className="text-zinc-400 text-xs line-clamp-2">
-                    {exercise.description}
-                  </CardDescription>
                 )}
-              </CardHeader>
-              <CardContent className="p-4 pt-2 flex-1 flex flex-col">
-                <div className="space-y-2 text-xs flex-1">
-                  <div className="flex flex-wrap gap-1.5">
-                    {exercise.category && (
-                      <span className="text-white bg-zinc-700 px-2 py-0.5 rounded text-[10px]">
-                        {CATEGORY_LABELS[exercise.category] || exercise.category}
-                      </span>
-                    )}
-                    {exercise.difficulty_level && (
-                      <span className="text-white bg-zinc-700 px-2 py-0.5 rounded text-[10px]">
-                        {DIFFICULTY_LABELS[exercise.difficulty_level] || exercise.difficulty_level}
-                      </span>
-                    )}
-                  </div>
-                  {exercise.muscle_groups && exercise.muscle_groups.length > 0 && (
-                    <div>
-                      <span className="text-zinc-500 text-[10px]">Músculos: </span>
-                      <span className="text-white text-[10px]">
-                        {exercise.muscle_groups.slice(0, 3).join(', ')}
-                        {exercise.muscle_groups.length > 3 && '...'}
-                      </span>
+                
+                {/* Play Overlay */}
+                {exercise.video_url && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                    <div className="bg-white/20 backdrop-blur-md p-3 rounded-full">
+                      <PlayCircle className="h-8 w-8 text-white fill-white/20" />
+                    </div>
                     </div>
                   )}
-                  {exercise.equipment_needed && exercise.equipment_needed.length > 0 && (
-                    <div>
-                      <span className="text-zinc-500 text-[10px]">Equipo: </span>
-                      <span className="text-white text-[10px]">
-                        {exercise.equipment_needed.slice(0, 2).join(', ')}
-                        {exercise.equipment_needed.length > 2 && '...'}
-                      </span>
-                    </div>
-                  )}
-                  {exercise.video_url && (
-                    <div className="pt-1">
-                      <span className="text-blue-400 text-[10px] flex items-center gap-1">
-                        ▶ Click para ver el video
+
+                {/* Category Badge */}
+                {exercise.category && (
+                  <div className="absolute bottom-2 left-2">
+                    <span className="text-[10px] font-medium bg-black/60 backdrop-blur-sm text-white px-2 py-1 rounded-full border border-white/10 uppercase tracking-wide">
+                      {CATEGORY_LABELS[exercise.category] || exercise.category}
                       </span>
                     </div>
                   )}
                 </div>
+
+              <CardContent className="p-4">
+                <h3 className="text-base font-semibold text-white leading-tight line-clamp-1 group-hover:text-blue-400 transition-colors">
+                  {exercise.name}
+                </h3>
+                {exercise.difficulty_level && (
+                  <div className="flex items-center gap-1.5 mt-2">
+                    <Activity className="h-3 w-3 text-zinc-500" />
+                    <span className="text-xs text-zinc-400 capitalize">
+                      {DIFFICULTY_LABELS[exercise.difficulty_level] || exercise.difficulty_level}
+                    </span>
+                  </div>
+                )}
               </CardContent>
             </Card>
           ))}
@@ -278,12 +260,12 @@ export function ExerciseList() {
       <Dialog open={isVideoOpen} onOpenChange={setIsVideoOpen}>
         <DialogContent className="max-w-4xl h-full sm:h-auto bg-zinc-900 border-zinc-800 text-white">
           <DialogHeader>
-            <DialogTitle className="text-white text-xl sm:text-2xl">
+            <DialogTitle className="text-white text-2xl font-bold flex items-center gap-2">
               {selectedExercise?.name}
             </DialogTitle>
           </DialogHeader>
           {selectedExercise?.video_url && (
-            <div className="aspect-video w-full bg-black rounded-lg overflow-hidden relative">
+            <div className="aspect-video w-full bg-black rounded-xl overflow-hidden relative shadow-2xl border border-zinc-800">
               {videoError ? (
                 <div className="w-full h-full flex flex-col items-center justify-center text-center p-4">
                   <p className="text-red-400 mb-2">Error al cargar el video</p>
@@ -293,7 +275,7 @@ export function ExerciseList() {
                       href={selectedExercise.video_url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm"
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-full text-sm font-medium transition-colors"
                     >
                       Abrir video en nueva pestaña
                     </a>
@@ -306,12 +288,12 @@ export function ExerciseList() {
                   </div>
                 </div>
               ) : (
-              <video
+                <video
                   key={selectedExercise.video_url}
-                controls
+                  controls
                   controlsList="nodownload"
-                className="w-full h-full"
-                autoPlay
+                  className="w-full h-full"
+                  autoPlay
                   playsInline
                   preload="metadata"
                   crossOrigin="anonymous"
@@ -342,43 +324,85 @@ export function ExerciseList() {
                   <source src={selectedExercise.video_url} type="video/mp4" />
                   <source src={selectedExercise.video_url} type="video/quicktime" />
                   <source src={selectedExercise.video_url} type="video/mov" />
-                Tu navegador no soporta el elemento de video.
-              </video>
+                  Tu navegador no soporta el elemento de video.
+                </video>
               )}
             </div>
           )}
-          {selectedExercise?.description && (
-            <div className="mt-6 bg-zinc-800/50 p-4 rounded-lg border border-zinc-800">
-              <h3 className="text-zinc-400 text-xs uppercase font-semibold mb-3 tracking-wider">
-                Instrucciones
-              </h3>
-              <div className="text-zinc-300">
-                {formatDescription(selectedExercise.description)}
-              </div>
-            </div>
-          )}
-          <div className="grid grid-cols-2 gap-4 mt-4">
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6">
             {selectedExercise?.category && (
-              <div className="bg-zinc-800/50 p-3 rounded-lg border border-zinc-800">
-                <span className="text-zinc-500 text-xs uppercase font-semibold tracking-wider block mb-1">
-                  Categoría
-                </span>
-                <p className="text-white font-medium">
+              <div className="bg-zinc-800/40 p-3 rounded-xl border border-zinc-800/50">
+                <div className="flex items-center gap-2 mb-1.5">
+                  <Tag className="h-3.5 w-3.5 text-blue-400" />
+                  <span className="text-zinc-500 text-[10px] uppercase font-bold tracking-wider">
+                    Categoría
+                  </span>
+                </div>
+                <p className="text-white text-sm font-medium leading-tight">
                   {CATEGORY_LABELS[selectedExercise.category] || selectedExercise.category}
                 </p>
               </div>
             )}
+            
             {selectedExercise?.difficulty_level && (
-              <div className="bg-zinc-800/50 p-3 rounded-lg border border-zinc-800">
-                <span className="text-zinc-500 text-xs uppercase font-semibold tracking-wider block mb-1">
-                  Dificultad
-                </span>
-                <p className="text-white font-medium capitalize">
+              <div className="bg-zinc-800/40 p-3 rounded-xl border border-zinc-800/50">
+                <div className="flex items-center gap-2 mb-1.5">
+                  <Activity className="h-3.5 w-3.5 text-green-400" />
+                  <span className="text-zinc-500 text-[10px] uppercase font-bold tracking-wider">
+                    Dificultad
+                  </span>
+                </div>
+                <p className="text-white text-sm font-medium leading-tight capitalize">
                   {DIFFICULTY_LABELS[selectedExercise.difficulty_level] || selectedExercise.difficulty_level}
                 </p>
               </div>
             )}
+
+            {selectedExercise?.muscle_groups && selectedExercise.muscle_groups.length > 0 && (
+              <div className="bg-zinc-800/40 p-3 rounded-xl border border-zinc-800/50 sm:col-span-2">
+                <div className="flex items-center gap-2 mb-1.5">
+                  <BicepsFlexed className="h-3.5 w-3.5 text-purple-400" />
+                  <span className="text-zinc-500 text-[10px] uppercase font-bold tracking-wider">
+                    Músculos
+                  </span>
+                </div>
+                <p className="text-white text-sm font-medium leading-tight line-clamp-2">
+                  {selectedExercise.muscle_groups.join(', ')}
+                </p>
+              </div>
+            )}
           </div>
+
+          {selectedExercise?.description && (
+            <div className="mt-4 bg-gradient-to-br from-zinc-800/50 to-zinc-900/50 p-5 rounded-xl border border-zinc-800/50">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="bg-blue-500/10 p-1.5 rounded-lg">
+                  <ListOrdered className="h-4 w-4 text-blue-400" />
+                </div>
+                <h3 className="text-white text-sm font-bold uppercase tracking-wide">
+                  Instrucciones Paso a Paso
+                </h3>
+              </div>
+              <div className="space-y-3 text-zinc-300">
+                {formatDescription(selectedExercise.description)}
+              </div>
+            </div>
+          )}
+
+          {selectedExercise?.equipment_needed && selectedExercise.equipment_needed.length > 0 && (
+            <div className="mt-4 flex items-start gap-3 bg-zinc-800/30 p-4 rounded-xl border border-zinc-800/30">
+              <Dumbbell className="h-5 w-5 text-yellow-500 mt-0.5" />
+              <div>
+                <span className="text-zinc-500 text-xs font-bold uppercase tracking-wider block mb-1">
+                  Equipo Necesario
+                </span>
+                <p className="text-white text-sm">
+                  {selectedExercise.equipment_needed.join(', ')}
+                </p>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 
