@@ -332,44 +332,44 @@ export function ExerciseList() {
             </div>
           )}
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6">
             {selectedExercise?.category && (
-              <div className="bg-zinc-800/40 p-3 rounded-xl border border-zinc-800/50">
-                <div className="flex items-center gap-2 mb-1.5">
-                  <Tag className="h-3.5 w-3.5 text-blue-400" />
-                  <span className="text-zinc-500 text-[10px] uppercase font-bold tracking-wider">
+              <div className="bg-zinc-800/40 p-4 rounded-xl border border-zinc-800/50 flex flex-col justify-center">
+                <div className="flex items-center gap-2 mb-2">
+                  <Tag className="h-4 w-4 text-blue-400" />
+                  <span className="text-zinc-500 text-xs uppercase font-bold tracking-wider">
                     Categoría
                   </span>
                 </div>
-                <p className="text-white text-sm font-medium leading-tight">
+                <p className="text-white text-base font-medium leading-tight">
                   {CATEGORY_LABELS[selectedExercise.category] || selectedExercise.category}
                 </p>
               </div>
             )}
             
             {selectedExercise?.difficulty_level && (
-              <div className="bg-zinc-800/40 p-3 rounded-xl border border-zinc-800/50">
-                <div className="flex items-center gap-2 mb-1.5">
-                  <Activity className="h-3.5 w-3.5 text-green-400" />
-                  <span className="text-zinc-500 text-[10px] uppercase font-bold tracking-wider">
+              <div className="bg-zinc-800/40 p-4 rounded-xl border border-zinc-800/50 flex flex-col justify-center">
+                <div className="flex items-center gap-2 mb-2">
+                  <Activity className="h-4 w-4 text-green-400" />
+                  <span className="text-zinc-500 text-xs uppercase font-bold tracking-wider">
                     Dificultad
                   </span>
                 </div>
-                <p className="text-white text-sm font-medium leading-tight capitalize">
+                <p className="text-white text-base font-medium leading-tight capitalize">
                   {DIFFICULTY_LABELS[selectedExercise.difficulty_level] || selectedExercise.difficulty_level}
                 </p>
               </div>
             )}
 
             {selectedExercise?.muscle_groups && selectedExercise.muscle_groups.length > 0 && (
-              <div className="bg-zinc-800/40 p-3 rounded-xl border border-zinc-800/50 sm:col-span-2">
-                <div className="flex items-center gap-2 mb-1.5">
-                  <BicepsFlexed className="h-3.5 w-3.5 text-purple-400" />
-                  <span className="text-zinc-500 text-[10px] uppercase font-bold tracking-wider">
+              <div className="bg-zinc-800/40 p-4 rounded-xl border border-zinc-800/50 sm:col-span-2">
+                <div className="flex items-center gap-2 mb-2">
+                  <BicepsFlexed className="h-4 w-4 text-purple-400" />
+                  <span className="text-zinc-500 text-xs uppercase font-bold tracking-wider">
                     Músculos
                   </span>
                 </div>
-                <p className="text-white text-sm font-medium leading-tight line-clamp-2">
+                <p className="text-white text-base font-medium leading-relaxed">
                   {selectedExercise.muscle_groups.join(', ')}
                 </p>
               </div>
