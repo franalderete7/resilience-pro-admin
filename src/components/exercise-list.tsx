@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button'
 import { CreateExerciseModal } from '@/components/create-exercise-modal'
 import { CreateExerciseAIModal } from '@/components/create-exercise-ai-modal'
 import { Plus, Sparkles, Trash2 } from 'lucide-react'
+import { CATEGORY_LABELS, DIFFICULTY_LABELS } from '@/lib/constants/exercise-categories'
 
 interface Exercise {
   exercise_id: number
@@ -25,23 +26,6 @@ interface Exercise {
   equipment_needed: string[] | null
   difficulty_level: string | null
   created_at: string
-}
-
-const categoryLabels: Record<string, string> = {
-  strength: 'Fuerza',
-  cardio: 'Cardio',
-  flexibility: 'Flexibilidad',
-  plyometrics: 'Pliometría',
-  balance: 'Balance',
-  power: 'Potencia',
-  endurance: 'Resistencia',
-  mobility: 'Movilidad',
-}
-
-const difficultyLabels: Record<string, string> = {
-  beginner: 'Principiante',
-  intermediate: 'Intermedio',
-  advanced: 'Avanzado',
 }
 
 export function ExerciseList() {
@@ -219,12 +203,12 @@ export function ExerciseList() {
                   <div className="flex flex-wrap gap-1.5">
                     {exercise.category && (
                       <span className="text-white bg-zinc-700 px-2 py-0.5 rounded text-[10px]">
-                        {categoryLabels[exercise.category] || exercise.category}
+                        {CATEGORY_LABELS[exercise.category] || exercise.category}
                       </span>
                     )}
                     {exercise.difficulty_level && (
                       <span className="text-white bg-zinc-700 px-2 py-0.5 rounded text-[10px]">
-                        {difficultyLabels[exercise.difficulty_level] || exercise.difficulty_level}
+                        {DIFFICULTY_LABELS[exercise.difficulty_level] || exercise.difficulty_level}
                       </span>
                     )}
                   </div>
@@ -287,7 +271,7 @@ export function ExerciseList() {
               <div>
                 <span className="text-zinc-500 text-sm">Categoría</span>
                 <p className="text-white font-medium">
-                  {categoryLabels[selectedExercise.category] || selectedExercise.category}
+                  {CATEGORY_LABELS[selectedExercise.category] || selectedExercise.category}
                 </p>
               </div>
             )}
@@ -295,7 +279,7 @@ export function ExerciseList() {
               <div>
                 <span className="text-zinc-500 text-sm">Dificultad</span>
                 <p className="text-white font-medium">
-                  {difficultyLabels[selectedExercise.difficulty_level] || selectedExercise.difficulty_level}
+                  {DIFFICULTY_LABELS[selectedExercise.difficulty_level] || selectedExercise.difficulty_level}
                 </p>
               </div>
             )}

@@ -1,12 +1,13 @@
 import type { LLMProgramResponse } from './types/program'
+import { PROGRAM_CONFIG } from './constants/exercise-categories'
 
 /**
  * Normalizes all numeric fields in the LLM response to ensure they meet database constraints.
  * This prevents validation errors from Supabase by ensuring all values are valid before insertion.
  */
 export function normalizeProgramData(data: LLMProgramResponse): LLMProgramResponse {
-  // Normalize program duration_weeks (must be > 0, but we enforce 2)
-  data.program.duration_weeks = 2
+  // Normalize program duration_weeks (must be > 0, enforce 4 weeks)
+  data.program.duration_weeks = PROGRAM_CONFIG.DURATION_WEEKS
 
   // Normalize workouts
   data.workouts.forEach((workout, workoutIndex) => {
@@ -22,9 +23,9 @@ export function normalizeProgramData(data: LLMProgramResponse): LLMProgramRespon
       workout.estimated_duration_minutes = Math.max(1, Math.floor(workout.estimated_duration_minutes))
     }
 
-    // Normalize week_number (must be >= 1 if provided)
+    // Normalize week_number (must be >= 1 and <= DURATION_WEEKS if provided)
     if (workout.week_number !== null && workout.week_number !== undefined) {
-      workout.week_number = Math.max(1, Math.floor(workout.week_number))
+      workout.week_number = Math.max(1, Math.min(PROGRAM_CONFIG.DURATION_WEEKS, Math.floor(workout.week_number)))
     }
 
     // Normalize day_of_week (must be 1-7 if provided)
@@ -69,4 +70,3 @@ export function normalizeProgramData(data: LLMProgramResponse): LLMProgramRespon
 
   return data
 }
-

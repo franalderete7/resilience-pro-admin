@@ -1,8 +1,14 @@
 import type { LLMProgramResponse } from './types/program'
+import {
+  BLOCK_TYPES,
+  DIFFICULTY_LEVELS,
+  WEIGHT_LEVELS,
+  PROGRAM_CONFIG,
+} from './constants/exercise-categories'
 
-const VALID_BLOCK_TYPES = ['warmup', 'main', 'cooldown', 'superset', 'circuit', 'standard']
-const VALID_DIFFICULTY_LEVELS = ['beginner', 'intermediate', 'advanced']
-const VALID_WEIGHT_LEVELS = ['no_weight', 'light', 'medium', 'heavy']
+const VALID_BLOCK_TYPES = [...BLOCK_TYPES]
+const VALID_DIFFICULTY_LEVELS = DIFFICULTY_LEVELS.map((d) => d.value)
+const VALID_WEIGHT_LEVELS = [...WEIGHT_LEVELS]
 
 export async function validateLLMResponse(
   response: any,
@@ -23,8 +29,11 @@ export async function validateLLMResponse(
     return { valid: false, error: 'Program name is required' }
   }
 
-  if (program.duration_weeks !== 2) {
-    return { valid: false, error: 'Program duration_weeks must be exactly 2' }
+  if (program.duration_weeks !== PROGRAM_CONFIG.DURATION_WEEKS) {
+    return {
+      valid: false,
+      error: `Program duration_weeks must be exactly ${PROGRAM_CONFIG.DURATION_WEEKS}`,
+    }
   }
 
   if (program.difficulty_level && !VALID_DIFFICULTY_LEVELS.includes(program.difficulty_level)) {
@@ -34,6 +43,15 @@ export async function validateLLMResponse(
   // Validate workouts
   if (workouts.length === 0) {
     return { valid: false, error: 'At least one workout is required' }
+  }
+
+  // Validate expected number of workouts (4 weeks × 3 per week = 12)
+  if (workouts.length < PROGRAM_CONFIG.TOTAL_WORKOUTS * 0.8) {
+    // Allow some flexibility (80% minimum)
+    return {
+      valid: false,
+      error: `Expected at least ${Math.floor(PROGRAM_CONFIG.TOTAL_WORKOUTS * 0.8)} workouts, got ${workouts.length}`,
+    }
   }
 
   for (const workout of workouts) {
@@ -51,6 +69,17 @@ export async function validateLLMResponse(
 
     if (workout.day_of_week && (workout.day_of_week < 1 || workout.day_of_week > 7)) {
       return { valid: false, error: 'day_of_week must be between 1 and 7' }
+    }
+
+    // Validate week_number for 4-week program
+    if (
+      workout.week_number &&
+      (workout.week_number < 1 || workout.week_number > PROGRAM_CONFIG.DURATION_WEEKS)
+    ) {
+      return {
+        valid: false,
+        error: `week_number must be between 1 and ${PROGRAM_CONFIG.DURATION_WEEKS}`,
+      }
     }
 
     // Validate blocks
@@ -108,4 +137,3 @@ export async function validateLLMResponse(
 
   return { valid: true, data: response as LLMProgramResponse }
 }
-

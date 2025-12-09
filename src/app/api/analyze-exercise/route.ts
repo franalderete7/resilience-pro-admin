@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Groq from 'groq-sdk'
 
-// Simple server-side logger to avoid importing client-heavy logger if not needed,
-// or we can import the shared one if it's environment agnostic.
-// Let's stick to console for server but formatted better.
+// Simple server-side logger
 const logError = (msg: string, err: any) => {
   console.error(JSON.stringify({
     level: 'error',
@@ -38,22 +36,34 @@ Basándote en el nombre del ejercicio, genera la siguiente información en forma
 
 {
   "name": "Nombre del ejercicio en español (limpio y formateado)",
-  "description": "Descripción detallada del ejercicio en español (2-3 oraciones explicando cómo se realiza, qué trabaja y beneficios)",
+  "description": "1. Primer paso de ejecución\\n2. Segundo paso de ejecución\\n3. Tercer paso de ejecución\\n4. Etc.",
   "categories": ["categoría1", "categoría2"],
   "difficulty_level": "beginner|intermediate|advanced",
   "muscle_groups": ["grupo muscular 1", "grupo muscular 2"],
   "equipment_needed": ["equipo 1", "equipo 2"]
 }
 
-Categorías válidas (puedes seleccionar múltiples):
-- strength (fuerza)
-- cardio
-- flexibility (flexibilidad)
-- plyometrics (pliometría)
-- balance
-- power (potencia)
-- endurance (resistencia)
-- mobility (movilidad)
+IMPORTANTE - Formato de description:
+- La descripción debe ser PASOS DE EJECUCIÓN numerados
+- Cada paso debe empezar con el número seguido de un punto y espacio (ej: "1. ")
+- Separa cada paso con un salto de línea (\\n)
+- Incluye entre 3 y 6 pasos claros y concisos
+- Los pasos deben explicar CÓMO ejecutar el ejercicio correctamente
+- Ejemplo de formato:
+  "1. Posición inicial: colócate de pie con los pies al ancho de los hombros\\n2. Flexiona las rodillas y baja las caderas como si fueras a sentarte\\n3. Mantén la espalda recta y el pecho elevado\\n4. Baja hasta que los muslos estén paralelos al suelo\\n5. Empuja con los talones para volver a la posición inicial"
+
+Categorías válidas (usa los valores exactos en inglés):
+- accessories (ejercicios accesorios para músculos pequeños)
+- agility (agilidad, cambios de dirección)
+- ballistics and plyometrics (ejercicios explosivos, saltos)
+- core (estabilidad del tronco)
+- hip-dominant (dominante de cadera: peso muerto, hip thrust)
+- knee-dominant (dominante de rodilla: sentadillas, zancadas)
+- pushes (empujes: press, flexiones)
+- isometrics (ejercicios isométricos, holds)
+- mobility and flexibility (movilidad y flexibilidad)
+- running technique (técnicas de carrera)
+- pulls (tracciones: remos, dominadas)
 
 Niveles de dificultad:
 - beginner (principiante)
@@ -62,8 +72,8 @@ Niveles de dificultad:
 
 Instrucciones:
 1. El nombre debe estar limpio (sin guiones, abreviaciones claras)
-2. La descripción debe ser informativa y en español
-3. Selecciona las categorías más apropiadas (puede ser más de una)
+2. La descripción DEBE ser pasos de ejecución numerados (formato: "1. Paso\\n2. Paso\\n3. Paso")
+3. Selecciona las categorías más apropiadas de la lista (puede ser más de una)
 4. Infiere el nivel de dificultad basándote en la complejidad del ejercicio
 5. Lista los grupos musculares principales que trabaja
 6. Lista el equipo necesario (si no necesita equipo, devuelve un array vacío)
@@ -79,7 +89,7 @@ Responde SOLO con el JSON, sin texto adicional.`
       ],
       model: 'llama-3.3-70b-versatile',
       temperature: 0.7,
-      max_tokens: 1000,
+      max_tokens: 1500,
     })
 
     const responseText = completion.choices[0]?.message?.content || ''
@@ -104,4 +114,3 @@ Responde SOLO con el JSON, sin texto adicional.`
     )
   }
 }
-

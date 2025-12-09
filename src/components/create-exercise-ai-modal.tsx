@@ -24,23 +24,7 @@ import {
 import { Sparkles, Loader2 } from 'lucide-react'
 import { FFmpeg } from '@ffmpeg/ffmpeg'
 import { fetchFile, toBlobURL } from '@ffmpeg/util'
-
-const exerciseCategories = [
-  { value: 'strength', label: 'Fuerza' },
-  { value: 'cardio', label: 'Cardio' },
-  { value: 'flexibility', label: 'Flexibilidad' },
-  { value: 'plyometrics', label: 'Pliometría' },
-  { value: 'balance', label: 'Balance' },
-  { value: 'power', label: 'Potencia' },
-  { value: 'endurance', label: 'Resistencia' },
-  { value: 'mobility', label: 'Movilidad' },
-]
-
-const difficultyLevels = [
-  { value: 'beginner', label: 'Principiante' },
-  { value: 'intermediate', label: 'Intermedio' },
-  { value: 'advanced', label: 'Avanzado' },
-]
+import { EXERCISE_CATEGORIES, DIFFICULTY_LEVELS } from '@/lib/constants/exercise-categories'
 
 interface CreateExerciseAIModalProps {
   open: boolean
@@ -683,7 +667,7 @@ export function CreateExerciseAIModal({ open, onOpenChange, onSuccess }: CreateE
             <div className="space-y-2">
               <Label className="text-white">Categorías</Label>
               <div className="flex flex-wrap gap-2">
-                {exerciseCategories.map((cat) => (
+                {EXERCISE_CATEGORIES.map((cat) => (
                   <button
                     key={cat.value}
                     type="button"
@@ -716,7 +700,7 @@ export function CreateExerciseAIModal({ open, onOpenChange, onSuccess }: CreateE
                   <SelectValue placeholder="Seleccionar" />
                 </SelectTrigger>
                 <SelectContent className="bg-zinc-800 border-zinc-700 text-white">
-                  {difficultyLevels.map((level) => (
+                  {DIFFICULTY_LEVELS.map((level) => (
                     <SelectItem key={level.value} value={level.value}>
                       {level.label}
                     </SelectItem>
