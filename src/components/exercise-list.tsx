@@ -258,9 +258,9 @@ export function ExerciseList() {
       )}
 
       <Dialog open={isVideoOpen} onOpenChange={setIsVideoOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col bg-zinc-900 border-zinc-800 text-white p-0 overflow-hidden">
+        <DialogContent className="max-w-6xl w-full max-h-[90vh] flex flex-col bg-zinc-900 border-zinc-800 text-white p-0 overflow-hidden">
           <DialogHeader className="p-6 pb-2 shrink-0">
-            <DialogTitle className="text-white text-2xl font-bold flex items-center gap-2">
+            <DialogTitle className="text-white text-2xl sm:text-3xl font-bold flex items-center gap-2">
               {selectedExercise?.name}
             </DialogTitle>
           </DialogHeader>
