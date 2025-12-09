@@ -28,6 +28,35 @@ interface Exercise {
   created_at: string
 }
 
+// Helper to format description steps
+const formatDescription = (description: string | null) => {
+  if (!description) return null
+
+  // Check if it's already a list (contains newlines)
+  if (description.includes('\n')) {
+    return description.split('\n').map((step, i) => (
+      <p key={i} className="mb-2 last:mb-0 text-sm sm:text-base leading-relaxed">
+        {step}
+      </p>
+    ))
+  }
+
+  // Check if it contains numbered steps (1. Step one 2. Step two...)
+  const numberedStepsRegex = /(\d+\.\s+[^0-9]+)/g
+  const matches = description.match(numberedStepsRegex)
+
+  if (matches && matches.length > 0) {
+    return matches.map((step, i) => (
+      <p key={i} className="mb-2 last:mb-0 text-sm sm:text-base leading-relaxed">
+        {step.trim()}
+      </p>
+    ))
+  }
+
+  // Default paragraph
+  return <p className="text-sm sm:text-base leading-relaxed">{description}</p>
+}
+
 export function ExerciseList() {
   const [exercises, setExercises] = useState<Exercise[]>([])
   const [loading, setLoading] = useState(true)
@@ -277,12 +306,12 @@ export function ExerciseList() {
                   </div>
                 </div>
               ) : (
-                <video
+              <video
                   key={selectedExercise.video_url}
-                  controls
+                controls
                   controlsList="nodownload"
-                  className="w-full h-full"
-                  autoPlay
+                className="w-full h-full"
+                autoPlay
                   playsInline
                   preload="metadata"
                   crossOrigin="anonymous"
@@ -313,27 +342,38 @@ export function ExerciseList() {
                   <source src={selectedExercise.video_url} type="video/mp4" />
                   <source src={selectedExercise.video_url} type="video/quicktime" />
                   <source src={selectedExercise.video_url} type="video/mov" />
-                  Tu navegador no soporta el elemento de video.
-                </video>
+                Tu navegador no soporta el elemento de video.
+              </video>
               )}
             </div>
           )}
           {selectedExercise?.description && (
-            <p className="text-zinc-300 mt-4">{selectedExercise.description}</p>
+            <div className="mt-6 bg-zinc-800/50 p-4 rounded-lg border border-zinc-800">
+              <h3 className="text-zinc-400 text-xs uppercase font-semibold mb-3 tracking-wider">
+                Instrucciones
+              </h3>
+              <div className="text-zinc-300">
+                {formatDescription(selectedExercise.description)}
+              </div>
+            </div>
           )}
           <div className="grid grid-cols-2 gap-4 mt-4">
             {selectedExercise?.category && (
-              <div>
-                <span className="text-zinc-500 text-sm">Categoría</span>
+              <div className="bg-zinc-800/50 p-3 rounded-lg border border-zinc-800">
+                <span className="text-zinc-500 text-xs uppercase font-semibold tracking-wider block mb-1">
+                  Categoría
+                </span>
                 <p className="text-white font-medium">
                   {CATEGORY_LABELS[selectedExercise.category] || selectedExercise.category}
                 </p>
               </div>
             )}
             {selectedExercise?.difficulty_level && (
-              <div>
-                <span className="text-zinc-500 text-sm">Dificultad</span>
-                <p className="text-white font-medium">
+              <div className="bg-zinc-800/50 p-3 rounded-lg border border-zinc-800">
+                <span className="text-zinc-500 text-xs uppercase font-semibold tracking-wider block mb-1">
+                  Dificultad
+                </span>
+                <p className="text-white font-medium capitalize">
                   {DIFFICULTY_LABELS[selectedExercise.difficulty_level] || selectedExercise.difficulty_level}
                 </p>
               </div>
