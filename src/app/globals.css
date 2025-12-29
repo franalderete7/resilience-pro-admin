@@ -53,6 +53,7 @@ button,
   -webkit-tap-highlight-color: transparent;
   -webkit-touch-callout: none;
   user-select: none;
+  cursor: pointer;
 }
 
 /* Touch manipulation for better mobile performance */

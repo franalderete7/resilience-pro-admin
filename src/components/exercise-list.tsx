@@ -10,9 +10,8 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { CreateExerciseModal } from '@/components/create-exercise-modal'
 import { CreateExerciseAIModal } from '@/components/create-exercise-ai-modal'
-import { Plus, Sparkles, Trash2, Activity, Dumbbell, ListOrdered, PlayCircle, Tag, BicepsFlexed } from 'lucide-react'
+import { Sparkles, Trash2, Activity, Dumbbell, ListOrdered, PlayCircle, Tag, BicepsFlexed } from 'lucide-react'
 import { CATEGORY_LABELS, DIFFICULTY_LABELS } from '@/lib/constants/exercise-categories'
 
 interface Exercise {
@@ -62,7 +61,6 @@ export function ExerciseList() {
   const [loading, setLoading] = useState(true)
   const [selectedExercise, setSelectedExercise] = useState<Exercise | null>(null)
   const [isVideoOpen, setIsVideoOpen] = useState(false)
-  const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [isCreateAIOpen, setIsCreateAIOpen] = useState(false)
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState<Exercise | null>(null)
@@ -154,15 +152,6 @@ export function ExerciseList() {
             <Sparkles className="mr-2 h-5 w-5" />
             Crear con IA
           </Button>
-          <Button
-            onClick={() => setIsCreateOpen(true)}
-            variant="outline"
-            className="border-zinc-700 text-white hover:bg-zinc-800 shadow-lg cursor-pointer w-full sm:w-auto min-h-[44px] touch-manipulation text-base"
-            size="lg"
-          >
-            <Plus className="mr-2 h-5 w-5" />
-            Crear Manual
-          </Button>
         </div>
       </div>
 
@@ -177,18 +166,10 @@ export function ExerciseList() {
               <Sparkles className="mr-2 h-4 w-4" />
               Crear con IA
             </Button>
-            <Button
-              onClick={() => setIsCreateOpen(true)}
-              variant="outline"
-              className="border-zinc-700 text-white hover:bg-zinc-800 cursor-pointer w-full sm:w-auto min-h-[44px] touch-manipulation"
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              Crear Manual
-            </Button>
           </div>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
           {exercises.map((exercise) => (
             <Card
               key={exercise.exercise_id}
@@ -206,7 +187,7 @@ export function ExerciseList() {
               </button>
 
               {/* Image Container */}
-              <div className="aspect-video w-full overflow-hidden bg-zinc-950 relative">
+              <div className="aspect-[3/4] w-full overflow-hidden bg-zinc-950 relative">
               {exercise.image_url ? (
                   <img
                     src={exercise.image_url}
@@ -267,7 +248,7 @@ export function ExerciseList() {
           
           <div className="flex-1 overflow-y-auto p-6 pt-2">
             {selectedExercise?.video_url && (
-            <div className="aspect-video w-full bg-black rounded-xl overflow-hidden relative shadow-2xl border border-zinc-800">
+            <div className="aspect-[9/16] max-h-[60vh] w-full max-w-sm mx-auto bg-black rounded-xl overflow-hidden relative shadow-2xl border border-zinc-800">
               {videoError ? (
                 <div className="w-full h-full flex flex-col items-center justify-center text-center p-4">
                   <p className="text-red-400 mb-2">Error al cargar el video</p>
@@ -408,12 +389,6 @@ export function ExerciseList() {
           </div>
         </DialogContent>
       </Dialog>
-
-      <CreateExerciseModal
-        open={isCreateOpen}
-        onOpenChange={setIsCreateOpen}
-        onSuccess={handleCreateSuccess}
-      />
 
       <CreateExerciseAIModal
         open={isCreateAIOpen}
