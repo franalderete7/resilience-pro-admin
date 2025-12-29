@@ -83,15 +83,15 @@ export function CreateExerciseAIModal({ open, onOpenChange, onSuccess }: CreateE
       // Set video attributes for proper loading
       video.muted = true
       video.playsInline = true
-      video.preload = 'metadata' // Start with metadata only
+      video.preload = 'auto' // Load the entire video for better frame access
       // Don't set crossOrigin for local files - it can cause CORS issues
 
       // Make video visible but tiny - some browsers need it visible to render frames
       video.style.position = 'fixed'
       video.style.top = '0'
       video.style.left = '0'
-      video.style.width = '2px'
-      video.style.height = '2px'
+      video.style.width = '10px'
+      video.style.height = '10px'
       video.style.opacity = '0.01' // Almost invisible but technically visible
       video.style.pointerEvents = 'none'
       video.style.zIndex = '-9999'
@@ -103,6 +103,8 @@ export function CreateExerciseAIModal({ open, onOpenChange, onSuccess }: CreateE
 
       let objectUrl: string | null = null
       let resolved = false
+      let captureAttempts = 0
+      const maxCaptureAttempts = 5
 
       const cleanup = () => {
         if (objectUrl) {
@@ -117,7 +119,8 @@ export function CreateExerciseAIModal({ open, onOpenChange, onSuccess }: CreateE
         }
       }
 
-      const captureFrame = () => {
+      const captureFrame = (retryOnBlack = true) => {
+        captureAttempts++
         try {
           // Ensure video has valid dimensions
           if (video.videoWidth === 0 || video.videoHeight === 0) {
@@ -131,34 +134,59 @@ export function CreateExerciseAIModal({ open, onOpenChange, onSuccess }: CreateE
           // Draw video frame to canvas
           ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
 
-          // Check if canvas is actually drawn (not black) - sample multiple areas
-          const sampleSize = Math.min(200, Math.min(canvas.width, canvas.height))
-          const imageData = ctx.getImageData(0, 0, sampleSize, sampleSize)
-          const pixels = imageData.data
+          // Check if canvas is actually drawn (not black) - sample multiple areas across the image
+          const samplePoints = [
+            { x: canvas.width * 0.25, y: canvas.height * 0.25 },
+            { x: canvas.width * 0.5, y: canvas.height * 0.5 },
+            { x: canvas.width * 0.75, y: canvas.height * 0.75 },
+            { x: canvas.width * 0.25, y: canvas.height * 0.75 },
+            { x: canvas.width * 0.75, y: canvas.height * 0.25 },
+          ]
+          
           let totalBrightness = 0
           let pixelCount = 0
-
-          // Calculate average brightness
-          for (let i = 0; i < pixels.length; i += 4) {
-            const r = pixels[i]
-            const g = pixels[i + 1]
-            const b = pixels[i + 2]
-            // Calculate brightness (luminance)
-            const brightness = (r * 0.299 + g * 0.587 + b * 0.114)
-            totalBrightness += brightness
-            pixelCount++
+          
+          for (const point of samplePoints) {
+            const sampleSize = 50
+            const x = Math.max(0, Math.floor(point.x) - sampleSize / 2)
+            const y = Math.max(0, Math.floor(point.y) - sampleSize / 2)
+            const w = Math.min(sampleSize, canvas.width - x)
+            const h = Math.min(sampleSize, canvas.height - y)
+            
+            const imageData = ctx.getImageData(x, y, w, h)
+            const pixels = imageData.data
+            
+            for (let i = 0; i < pixels.length; i += 4) {
+              const r = pixels[i]
+              const g = pixels[i + 1]
+              const b = pixels[i + 2]
+              const brightness = (r * 0.299 + g * 0.587 + b * 0.114)
+              totalBrightness += brightness
+              pixelCount++
+            }
           }
 
           const averageBrightness = totalBrightness / pixelCount
 
           // Log brightness for debugging
-          logger.debug('Frame captured', { brightness: averageBrightness, width: video.videoWidth, height: video.videoHeight })
+          logger.debug('Frame captured', { 
+            brightness: averageBrightness, 
+            width: video.videoWidth, 
+            height: video.videoHeight,
+            attempt: captureAttempts,
+            currentTime: video.currentTime
+          })
 
-          // If average brightness is too low (very dark/black), warn but don't fail
-          // Some videos might have dark frames - let user decide
-          if (averageBrightness < 3) {
-            logger.warn('Extracted frame appears very dark', { brightness: averageBrightness })
-            // Don't throw error - let it proceed, user can upload custom image if needed
+          // If frame is black and we haven't exhausted retries, try a different time
+          if (averageBrightness < 5 && retryOnBlack && captureAttempts < maxCaptureAttempts) {
+            logger.warn('Frame appears black, trying different timestamp', { 
+              brightness: averageBrightness, 
+              attempt: captureAttempts 
+            })
+            // Try different timestamps
+            const newTime = Math.min(video.duration * 0.1 * (captureAttempts + 1), video.duration - 0.1)
+            video.currentTime = newTime
+            return // Will trigger onseeked again
           }
 
           // Convert canvas to blob, then to File
@@ -169,6 +197,11 @@ export function CreateExerciseAIModal({ open, onOpenChange, onSuccess }: CreateE
                 const fileName = videoFile.name.replace(/\.[^/.]+$/, '.jpg')
                 const file = new File([blob], fileName, { type: 'image/jpeg' })
                 cleanup()
+                
+                if (averageBrightness < 5) {
+                  logger.warn('Final frame is still dark - user may need to upload custom image')
+                }
+                
                 resolve(file)
               } else if (!resolved) {
                 cleanup()
@@ -200,56 +233,56 @@ export function CreateExerciseAIModal({ open, onOpenChange, onSuccess }: CreateE
       }
 
       video.onseeked = async () => {
-        logger.debug('Video seeked', { readyState: video.readyState })
+        logger.debug('Video seeked', { readyState: video.readyState, currentTime: video.currentTime })
 
-        // Wait for video to be ready and have valid dimensions
-        const waitForReady = () => {
-          if (video.readyState >= 2 && video.videoWidth > 0 && video.videoHeight > 0) {
-            // Try to play video briefly to ensure frame is rendered (required by some browsers)
+        // Wait for video to be fully ready with a more robust approach
+        const waitForReady = (attempts = 0) => {
+          if (attempts > 20) {
+            // Give up waiting, try capture anyway
+            logger.warn('Max wait attempts reached, attempting capture')
+            captureFrame(true)
+            return
+          }
+          
+          if (video.readyState >= 3 && video.videoWidth > 0 && video.videoHeight > 0) {
+            // readyState 3 = HAVE_FUTURE_DATA, better than 2
+            // Try to play video briefly to ensure frame is fully decoded
             video.play().then(() => {
-              // Wait longer for frame to actually render
-              setTimeout(() => {
-                video.pause()
-                // Additional delay to ensure frame is fully rendered before capture
-                setTimeout(() => {
-                  // Double-check video is paused and ready
-                  if (video.paused && video.readyState >= 2) {
-                    captureFrame()
-                  } else {
-                    // Wait a bit more
-                    setTimeout(() => captureFrame(), 200)
-                  }
-                }, 300)
-              }, 100)
+              // Wait for frame to actually render
+              requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                  video.pause()
+                  // Additional delay to ensure frame is fully rendered before capture
+                  setTimeout(() => {
+                    captureFrame(true)
+                  }, 100)
+                })
+              })
             }).catch((playError) => {
               logger.warn('Video play failed, attempting direct capture', { error: playError })
-              // If play fails, try capturing directly after a delay
+              // If play fails, try capturing directly after a longer delay
               setTimeout(() => {
-                captureFrame()
+                captureFrame(true)
               }, 500)
             })
           } else {
-            logger.debug('Video not ready, waiting...', { readyState: video.readyState })
-            setTimeout(waitForReady, 200) // Increased delay for mobile
+            logger.debug('Video not ready, waiting...', { readyState: video.readyState, attempts })
+            setTimeout(() => waitForReady(attempts + 1), 100)
           }
         }
         waitForReady()
       }
 
-      video.onloadeddata = () => {
-        // Fallback: if seeked doesn't fire, try capturing at current time
-        setTimeout(() => {
-          if (!resolved && video.readyState >= 2) {
-            captureFrame()
-          }
-        }, 500)
+      video.oncanplaythrough = () => {
+        logger.debug('Video can play through', { readyState: video.readyState })
       }
 
       video.onerror = (e) => {
         if (!resolved) {
           resolved = true
           cleanup()
-          reject(new Error(`Video loading error: ${video.error?.message || 'Unknown error'}`))
+          const errorMsg = video.error?.message || 'Unknown error'
+          reject(new Error(`Error al cargar el video: ${errorMsg}`))
         }
       }
 
@@ -262,7 +295,7 @@ export function CreateExerciseAIModal({ open, onOpenChange, onSuccess }: CreateE
         if (!resolved) {
           resolved = true
           cleanup()
-          reject(new Error('Frame extraction timeout - video may be too large or unsupported format'))
+          reject(new Error('Tiempo de espera agotado al extraer imagen. El video puede ser muy grande o tener un formato no soportado.'))
         }
       }, 30000)
     })
@@ -329,6 +362,10 @@ export function CreateExerciseAIModal({ open, onOpenChange, onSuccess }: CreateE
 
     try {
       logger.debug('Starting AI analysis', { fileName: videoFile.name })
+      
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 30000) // 30 second timeout
+      
       const response = await fetch('/api/analyze-exercise', {
         method: 'POST',
         headers: {
@@ -337,14 +374,30 @@ export function CreateExerciseAIModal({ open, onOpenChange, onSuccess }: CreateE
         body: JSON.stringify({
           filename: videoFile.name.replace(/\.[^/.]+$/, ''), // Send filename without extension
         }),
+        signal: controller.signal,
       })
+      
+      clearTimeout(timeoutId)
 
       if (!response.ok) {
-        throw new Error('Error al analizar el ejercicio')
+        const errorData = await response.json().catch(() => ({}))
+        if (response.status === 429) {
+          throw new Error('Demasiadas solicitudes. Espera un momento e intenta de nuevo.')
+        } else if (response.status === 500) {
+          throw new Error('Error del servidor al analizar. Intenta de nuevo más tarde.')
+        } else if (response.status === 401 || response.status === 403) {
+          throw new Error('Sesión expirada. Por favor recarga la página e inicia sesión de nuevo.')
+        } else {
+          throw new Error(errorData.error || `Error al analizar el ejercicio (${response.status})`)
+        }
       }
 
       const result = await response.json()
       const data = result.data
+      
+      if (!data) {
+        throw new Error('La IA no pudo analizar el ejercicio. Intenta con un nombre de archivo más descriptivo.')
+      }
       
       logger.debug('AI analysis completed', { data })
 
@@ -365,7 +418,11 @@ export function CreateExerciseAIModal({ open, onOpenChange, onSuccess }: CreateE
       setAnalyzed(true)
     } catch (err: any) {
       logger.error('Error in analyzeWithAI', err)
-      setError(err.message || 'Error al analizar con IA')
+      if (err.name === 'AbortError') {
+        setError('El análisis tardó demasiado. Por favor intenta de nuevo.')
+      } else {
+        setError(err.message || 'Error al analizar con IA. Verifica tu conexión e intenta de nuevo.')
+      }
     } finally {
       setAnalyzing(false)
     }
@@ -375,27 +432,46 @@ export function CreateExerciseAIModal({ open, onOpenChange, onSuccess }: CreateE
     file: File,
     bucket: string,
     fileName: string
-  ): Promise<string | null> => {
-    try {
-      logger.debug('Uploading file', { bucket, fileName, size: file.size })
-      const { data, error } = await supabase.storage
-        .from(bucket)
-        .upload(fileName, file, {
-          cacheControl: '3600',
-          upsert: false,
-        })
-
-      if (error) throw error
-
-      const {
-        data: { publicUrl },
-      } = supabase.storage.from(bucket).getPublicUrl(data.path)
-
-      return publicUrl
-    } catch (error) {
-      logger.error('Error uploading file:', error)
-      return null
+  ): Promise<string> => {
+    const maxVideoSize = 50 * 1024 * 1024 // 50MB limit for videos
+    const maxImageSize = 10 * 1024 * 1024 // 10MB limit for images
+    const maxSize = bucket.includes('video') ? maxVideoSize : maxImageSize
+    const sizeLabel = bucket.includes('video') ? '50MB' : '10MB'
+    
+    if (file.size > maxSize) {
+      throw new Error(`El archivo es demasiado grande (${(file.size / 1024 / 1024).toFixed(1)}MB). El límite es ${sizeLabel}.`)
     }
+    
+    logger.debug('Uploading file', { bucket, fileName, size: file.size })
+    
+    const { data, error } = await supabase.storage
+      .from(bucket)
+      .upload(fileName, file, {
+        cacheControl: '3600',
+        upsert: false,
+      })
+
+    if (error) {
+      logger.error('Upload error:', error)
+      // Provide specific error messages
+      if (error.message?.includes('Payload too large') || error.message?.includes('413')) {
+        throw new Error(`El archivo es demasiado grande para subir. Intenta con un archivo más pequeño (máximo ${sizeLabel}).`)
+      } else if (error.message?.includes('duplicate') || error.message?.includes('already exists')) {
+        throw new Error('Ya existe un archivo con este nombre. Intenta de nuevo.')
+      } else if (error.message?.includes('permission') || error.message?.includes('not authorized')) {
+        throw new Error('No tienes permisos para subir archivos. Verifica tu sesión.')
+      } else if (error.message?.includes('network') || error.message?.includes('fetch')) {
+        throw new Error('Error de conexión. Verifica tu internet e intenta de nuevo.')
+      } else {
+        throw new Error(`Error al subir archivo: ${error.message || 'Error desconocido'}`)
+      }
+    }
+
+    const {
+      data: { publicUrl },
+    } = supabase.storage.from(bucket).getPublicUrl(data.path)
+
+    return publicUrl
   }
 
   const resetForm = () => {
@@ -486,28 +562,41 @@ export function CreateExerciseAIModal({ open, onOpenChange, onSuccess }: CreateE
 
     try {
       logger.info('Submitting exercise creation form')
-      let videoUrl = null
-      let imageUrl = null
+      
+      // Validate required fields
+      if (!formData.name.trim()) {
+        throw new Error('El nombre del ejercicio es requerido.')
+      }
+      
+      if (!videoFile) {
+        throw new Error('Por favor sube un video del ejercicio.')
+      }
+      
+      let videoUrl: string | null = null
+      let imageUrl: string | null = null
 
       // Upload video
-      if (videoFile) {
+      try {
         // Compress if needed
         const fileToUpload = await compressVideo(videoFile)
-        
-        const fileName = `${Date.now()}-${fileToUpload.name}`
+        const fileName = `${Date.now()}-${fileToUpload.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`
         videoUrl = await uploadFile(fileToUpload, 'exercise-videos', fileName)
-        if (!videoUrl) {
-          throw new Error('Error al subir el video')
-        }
+      } catch (uploadErr: any) {
+        logger.error('Video upload failed', uploadErr)
+        throw new Error(`Error al subir video: ${uploadErr.message}`)
       }
 
       // Upload image: use manually uploaded image if provided, otherwise use extracted frame
       const imageToUpload = imageFile || extractedImageFile
       if (imageToUpload) {
-        const fileName = `${Date.now()}-${imageToUpload.name}`
-        imageUrl = await uploadFile(imageToUpload, 'exercise-images', fileName)
-        if (!imageUrl) {
-          throw new Error('Error al subir la imagen')
+        try {
+          const fileName = `${Date.now()}-${imageToUpload.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`
+          imageUrl = await uploadFile(imageToUpload, 'exercise-images', fileName)
+        } catch (uploadErr: any) {
+          logger.error('Image upload failed', uploadErr)
+          // Don't fail the whole process for image upload - video is more important
+          logger.warn('Continuing without image')
+          setError(`Nota: La imagen no se pudo subir (${uploadErr.message}), pero el ejercicio se creará sin imagen.`)
         }
       }
 
@@ -527,8 +616,8 @@ export function CreateExerciseAIModal({ open, onOpenChange, onSuccess }: CreateE
       // Create exercise record
       logger.debug('Creating exercise record in DB')
       const { error: insertError } = await supabase.from('exercises').insert({
-        name: formData.name,
-        description: formData.description || null,
+        name: formData.name.trim(),
+        description: formData.description?.trim() || null,
         video_url: videoUrl,
         image_url: imageUrl,
         category: primaryCategory,
@@ -538,7 +627,16 @@ export function CreateExerciseAIModal({ open, onOpenChange, onSuccess }: CreateE
         created_by: adminUser?.id,
       })
 
-      if (insertError) throw insertError
+      if (insertError) {
+        logger.error('Database insert error', insertError)
+        if (insertError.message?.includes('duplicate')) {
+          throw new Error('Ya existe un ejercicio con este nombre.')
+        } else if (insertError.message?.includes('permission') || insertError.message?.includes('policy')) {
+          throw new Error('No tienes permisos para crear ejercicios. Verifica tu sesión.')
+        } else {
+          throw new Error(`Error al guardar en base de datos: ${insertError.message}`)
+        }
+      }
 
       logger.info('Exercise created successfully')
       resetForm()
@@ -546,7 +644,7 @@ export function CreateExerciseAIModal({ open, onOpenChange, onSuccess }: CreateE
       onOpenChange(false)
     } catch (err: any) {
       logger.error('Error creating exercise', err)
-      setError(err.message || 'Error al crear el ejercicio')
+      setError(err.message || 'Error desconocido al crear el ejercicio. Por favor intenta de nuevo.')
     } finally {
       setLoading(false)
     }

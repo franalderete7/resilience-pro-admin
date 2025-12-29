@@ -135,7 +135,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (data.user) {
         logger.debug('Sign in successful, checking admin role', { userId: data.user.id })
         setUser(data.user)
-        await checkAdminRole(data.user.id)
+        // Use Promise.race to ensure we don't hang forever
+        const checkPromise = checkAdminRole(data.user.id)
+        const timeoutPromise = new Promise<void>((_, reject) => 
+          setTimeout(() => reject(new Error('Admin check timeout')), 10000)
+        )
+        
+        try {
+          await Promise.race([checkPromise, timeoutPromise])
+        } catch (timeoutErr) {
+          logger.error('Admin role check timed out', timeoutErr)
+          setLoading(false)
+          // Don't return error - user might still be logged in
+        }
       } else {
         logger.warn('Sign in returned no user')
         setLoading(false)
