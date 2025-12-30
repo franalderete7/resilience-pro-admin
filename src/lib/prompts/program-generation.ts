@@ -16,32 +16,71 @@ METODOLOGÍA DE ENTRENAMIENTO RESILIENCE PRO:
 
 El método de planificación sigue la siguiente línea de trabajo. Esta es la base del entrenamiento tradicional de Resilience Pro:
 
-1. ACTIVACIÓN 1 (Warmup): Ejercicios de movilidad y flexibilidad
-   - Preparación articular y activación del sistema nervioso
-   - Categorías: mobility and flexibility
+⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻
 
-2. ACTIVACIÓN 2 (Warmup): Ejercicios de core, estabilidad y patrones básicos de movimiento livianos
-   - Activación del core y preparación neuromuscular
-   - Categorías: core, isometrics
+ACTIVACIÓN 1 (Warmup)
+• Flexibilidad dinámica
+• Movilidad articular
+- Preparación articular y activación del sistema nervioso
+- Categorías permitidas: mobility and flexibility
 
-3. BLOQUE 1 (Main): Ejercicios de gran demanda de velocidad
-   - Trabajo de potencia y velocidad explosiva
-   - Categorías: ballistics and plyometrics, agility, running technique
+⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻
 
-4. BLOQUE 2 (Main): Patrones básicos de movimiento, pesados
-   - Un ejercicio de miembro inferior (hip-dominant o knee-dominant)
-   - Un ejercicio de miembro superior (pushes o pulls)
-   - Trabajo de fuerza con cargas significativas
+ACTIVACIÓN 2 (Warmup)
+• Estabilidad
+• Core
+• Activación de patrones de movimiento
+- Activación del core y preparación neuromuscular
+- Categorías permitidas: core, isometrics
 
-5. BLOQUE 3 (Main): Patrones básicos de movimiento unilaterales, pesados
-   - Un ejercicio de miembro inferior unilateral (hip-dominant o knee-dominant)
-   - Un ejercicio de miembro superior unilateral (pushes o pulls)
-   - Desarrollo de estabilidad y corrección de asimetrías
+⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻
 
-6. BLOQUE 4 (Main/Cooldown): Ejercicios accesorios
-   - Músculos pequeños: bíceps, tríceps, deltoides, romboides, etc.
-   - Categorías: accessories
-   - Trabajo de hipertrofia y acabado muscular
+BLOQUE 1 (Main)
+• Fuerza explosiva
+• Potencia
+• Ejercicios balísticos
+• Ejercicios pliométricos
+- Trabajo de potencia y velocidad explosiva
+- Categorías permitidas: ballistics and plyometrics, agility, running technique
+
+⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻
+
+BLOQUE 2 (Main)
+• Fuerza bilateral
+• Patrones básicos de movimiento
+- Un ejercicio de miembro inferior (hip-dominant o knee-dominant)
+- Un ejercicio de miembro superior (pushes o pulls)
+- Trabajo de fuerza con cargas significativas
+- Categorías permitidas: hip-dominant, knee-dominant, pushes, pulls
+
+⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻
+
+BLOQUE 3 (Main)
+• Fuerza unilateral
+• Trabajo a un brazo / una pierna
+- Un ejercicio de miembro inferior unilateral (hip-dominant o knee-dominant)
+- Un ejercicio de miembro superior unilateral (pushes o pulls)
+- Desarrollo de estabilidad y corrección de asimetrías
+- Categorías permitidas: hip-dominant, knee-dominant, pushes, pulls (versiones unilaterales)
+
+⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻
+
+BLOQUE 4 (Main/Cooldown)
+• Ejercicios accesorios
+• Ejercicios complementarios
+• Trabajo analítico
+- Músculos pequeños: bíceps, tríceps, deltoides, romboides, etc.
+- Categorías permitidas: accessories
+- Trabajo de hipertrofia y acabado muscular
+
+⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻
+
+REGLA CRÍTICA DE CATEGORÍAS:
+Cada ejercicio en cada bloque DEBE pertenecer a las categorías permitidas para ese bloque.
+- NO incluyas ejercicios de "accessories" en Bloque 1
+- NO incluyas ejercicios de "ballistics and plyometrics" en Bloque 4
+- NO incluyas ejercicios de "mobility and flexibility" en bloques de fuerza
+- SIEMPRE respeta la categoría del ejercicio según su bloque correspondiente
 
 CANTIDAD DE EJERCICIOS POR BLOQUE:
 - Cada bloque debe tener entre 2 y 4 ejercicios (esto es la norma estándar)
