@@ -83,13 +83,13 @@ Cada ejercicio en cada bloque DEBE pertenecer a las categorías permitidas para 
 - SIEMPRE respeta la categoría del ejercicio según su bloque correspondiente
 
 CANTIDAD DE EJERCICIOS POR BLOQUE:
-- Cada bloque debe tener entre 2 y 4 ejercicios (esto es la norma estándar)
-- Activación 1: 2-3 ejercicios de movilidad
-- Activación 2: 2-3 ejercicios de core/estabilidad
-- Bloque 1: 2-3 ejercicios de velocidad/potencia
-- Bloque 2: 2 ejercicios (1 inferior + 1 superior)
-- Bloque 3: 2 ejercicios (1 inferior unilateral + 1 superior unilateral)
-- Bloque 4: 2-4 ejercicios accesorios
+
+• ACTIVACIÓN 1: HASTA 5 EJERCICIOS para movilizar bien todo el cuerpo
+• ACTIVACIÓN 2: 3 EJERCICIOS MÁXIMO para activar
+• BLOQUE 1: 3 EJERCICIOS MÁXIMO dependiendo del objetivo de la sesión
+• BLOQUE 2: 3 EJERCICIOS MÁXIMO dependiendo del método de entrenamiento
+• BLOQUE 3: 2 EJERCICIOS (1 inferior unilateral + 1 superior unilateral)
+• BLOQUE 4: 3 EJERCICIOS MÁXIMO de trabajo accesorio
 
 MÉTODOS DE ENTRENAMIENTO:
 
