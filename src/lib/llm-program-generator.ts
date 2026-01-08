@@ -33,11 +33,13 @@ async function fetchAvailableExercises() {
  * 
  * @param userData - User profile and preferences
  * @param programRequirements - Optional specific requirements for the program
+ * @param previousError - Optional error message from previous attempt for retry feedback
  * @returns The generated program structure from the LLM
  */
 export async function generateProgramWithLLM(
   userData: UserData,
-  programRequirements?: ProgramRequirements
+  programRequirements?: ProgramRequirements,
+  previousError?: string
 ): Promise<LLMProgramResponse> {
   const exercises = await fetchAvailableExercises()
 
@@ -46,7 +48,12 @@ export async function generateProgramWithLLM(
   }
 
   const systemPrompt = buildSystemPrompt()
-  const userPrompt = buildUserPrompt(userData, programRequirements, exercises)
+  let userPrompt = buildUserPrompt(userData, programRequirements, exercises)
+
+  // Add feedback from previous attempt if this is a retry
+  if (previousError) {
+    userPrompt += `\n\n⚠️ CORRECCIÓN REQUERIDA - INTENTO ANTERIOR FALLÓ:\n${previousError}\n\nPor favor, corrige estos errores y asegúrate de generar exactamente ${PROGRAM_CONFIG.TOTAL_WORKOUTS} workouts (${PROGRAM_CONFIG.WORKOUTS_PER_WEEK} por semana × ${PROGRAM_CONFIG.DURATION_WEEKS} semanas).`
+  }
 
   const completion = await groq.chat.completions.create({
     messages: [

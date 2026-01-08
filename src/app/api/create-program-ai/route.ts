@@ -66,23 +66,66 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // 4. Generate program with LLM
-    const llmResponse = await generateProgramWithLLM(
-      body.userData,
-      body.programRequirements
-    )
+    // 4. Generate program with LLM with retry mechanism
+    const MAX_RETRIES = 3
+    let llmResponse: any = null
+    let normalizedResponse: any = null
+    let validation: { valid: boolean; error?: string; data?: any } | null = null
+    let lastError: string | undefined = undefined
 
-    // 4.5. Normalize ALL numeric fields to ensure database constraints are met
-    // This prevents validation errors from Supabase (reps >= 1, sets > 0, etc.)
-    const normalizedResponse = normalizeProgramData(llmResponse)
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        // Generate program with LLM (include previous error feedback if retrying)
+        llmResponse = await generateProgramWithLLM(
+          body.userData,
+          body.programRequirements,
+          lastError
+        )
 
-    // 5. Validate LLM response
-    const validation = await validateLLMResponse(normalizedResponse, availableExerciseIds)
+        // Normalize ALL numeric fields to ensure database constraints are met
+        normalizedResponse = normalizeProgramData(llmResponse)
 
-    if (!validation.valid || !validation.data) {
+        // Validate LLM response
+        validation = await validateLLMResponse(normalizedResponse, availableExerciseIds)
+
+        if (validation.valid && validation.data) {
+          // Validation passed! Break out of retry loop
+          break
+        } else {
+          // Validation failed - store error for retry feedback
+          lastError = validation.error || 'Invalid program structure'
+          
+          // If this is the last attempt, we'll return the error below
+          if (attempt === MAX_RETRIES) {
+            console.warn(`Program generation failed after ${MAX_RETRIES} attempts. Last error: ${lastError}`)
+            break
+          }
+          
+          // Wait a bit before retrying (exponential backoff)
+          await new Promise(resolve => setTimeout(resolve, 1000 * attempt))
+          console.log(`Program generation attempt ${attempt} failed. Retrying... Error: ${lastError}`)
+        }
+      } catch (error: any) {
+        lastError = error.message || 'Failed to generate program'
+        
+        if (attempt === MAX_RETRIES) {
+          throw error // Re-throw on last attempt
+        }
+        
+        console.error(`Program generation attempt ${attempt} threw error:`, error)
+        await new Promise(resolve => setTimeout(resolve, 1000 * attempt))
+      }
+    }
+
+    // Check if we have a valid program after all retries
+    if (!validation || !validation.valid || !validation.data) {
+      // After all retries failed, return a user-friendly error
       return NextResponse.json(
-        { error: validation.error || 'Invalid program structure from LLM' },
-        { status: 400 }
+        { 
+          error: 'Unable to generate a valid program. Please try again in a moment.',
+          details: lastError // Include details for debugging (can be removed in production)
+        },
+        { status: 500 }
       )
     }
 

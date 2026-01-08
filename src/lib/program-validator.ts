@@ -47,9 +47,37 @@ export async function validateLLMResponse(
 
   // Validate expected number of workouts (4 weeks × 3 per week = 12)
   if (workouts.length !== PROGRAM_CONFIG.TOTAL_WORKOUTS) {
+    // Count workouts per week to provide detailed feedback
+    const workoutsPerWeek: Record<number, number> = {}
+    workouts.forEach((workout) => {
+      const week = workout.week_number || 0
+      workoutsPerWeek[week] = (workoutsPerWeek[week] || 0) + 1
+    })
+    
+    const weekBreakdown = Object.entries(workoutsPerWeek)
+      .map(([week, count]) => `Semana ${week}: ${count} workouts`)
+      .join(', ')
+    
     return {
       valid: false,
-      error: `Expected exactly ${PROGRAM_CONFIG.TOTAL_WORKOUTS} workouts (${PROGRAM_CONFIG.WORKOUTS_PER_WEEK} per week × ${PROGRAM_CONFIG.DURATION_WEEKS} weeks), got ${workouts.length}`,
+      error: `Expected exactly ${PROGRAM_CONFIG.TOTAL_WORKOUTS} workouts (${PROGRAM_CONFIG.WORKOUTS_PER_WEEK} per week × ${PROGRAM_CONFIG.DURATION_WEEKS} weeks), got ${workouts.length}. Breakdown: ${weekBreakdown || 'No week_number specified'}. Each week MUST have exactly ${PROGRAM_CONFIG.WORKOUTS_PER_WEEK} workouts.`,
+    }
+  }
+  
+  // Validate that each week has exactly 3 workouts
+  const workoutsPerWeek: Record<number, number> = {}
+  workouts.forEach((workout) => {
+    const week = workout.week_number || 0
+    workoutsPerWeek[week] = (workoutsPerWeek[week] || 0) + 1
+  })
+  
+  for (let week = 1; week <= PROGRAM_CONFIG.DURATION_WEEKS; week++) {
+    const count = workoutsPerWeek[week] || 0
+    if (count !== PROGRAM_CONFIG.WORKOUTS_PER_WEEK) {
+      return {
+        valid: false,
+        error: `Week ${week} has ${count} workouts, but must have exactly ${PROGRAM_CONFIG.WORKOUTS_PER_WEEK} workouts. Each week MUST have exactly ${PROGRAM_CONFIG.WORKOUTS_PER_WEEK} workouts.`,
+      }
     }
   }
 
