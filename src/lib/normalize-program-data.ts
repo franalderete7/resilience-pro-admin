@@ -60,7 +60,10 @@ export function normalizeProgramData(data: LLMProgramResponse): LLMProgramRespon
           exercise.reps = Math.max(1, Math.floor(exercise.reps))
         }
 
-        // Ensure exercise_id is an integer
+        // Ensure exercise_id is an integer (LLM sometimes returns it as a string)
+        if (typeof exercise.exercise_id === 'string') {
+          exercise.exercise_id = parseInt(exercise.exercise_id, 10)
+        }
         if (typeof exercise.exercise_id === 'number') {
           exercise.exercise_id = Math.floor(exercise.exercise_id)
         }

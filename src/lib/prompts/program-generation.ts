@@ -158,9 +158,19 @@ ${TRAINING_METHODOLOGY}
 
 ${CATEGORY_DESCRIPTIONS}
 
-ESTRUCTURA DEL PROGRAMA:
-- Duración: SIEMPRE ${PROGRAM_CONFIG.DURATION_WEEKS} semanas (${PROGRAM_CONFIG.DURATION_WEEKS * 7} días)
-- Frecuencia: ${PROGRAM_CONFIG.WORKOUTS_PER_WEEK} entrenamientos por semana (${PROGRAM_CONFIG.TOTAL_WORKOUTS} workouts totales)
+⚠️ ESTRUCTURA DEL PROGRAMA - REQUISITO CRÍTICO ⚠️
+- Duración: SIEMPRE ${PROGRAM_CONFIG.DURATION_WEEKS} semanas EXACTAS
+- Frecuencia: EXACTAMENTE ${PROGRAM_CONFIG.WORKOUTS_PER_WEEK} entrenamientos por CADA semana
+- Total: ${PROGRAM_CONFIG.TOTAL_WORKOUTS} workouts totales (${PROGRAM_CONFIG.WORKOUTS_PER_WEEK} workouts × ${PROGRAM_CONFIG.DURATION_WEEKS} semanas)
+
+🚨 DISTRIBUCIÓN OBLIGATORIA POR SEMANA:
+  - Semana 1: 3 workouts (workout_order 1, 2, 3)
+  - Semana 2: 3 workouts (workout_order 4, 5, 6)
+  - Semana 3: 3 workouts (workout_order 7, 8, 9)
+  - Semana 4: 3 workouts (workout_order 10, 11, 12)
+
+⚠️ CADA SEMANA DEBE TENER EXACTAMENTE 3 WORKOUTS - NO MENOS, NO MÁS ⚠️
+
 - Cada workout debe seguir la estructura de bloques de Resilience Pro:
   * Activación 1 (warmup): Movilidad y flexibilidad
   * Activación 2 (warmup): Core y patrones básicos livianos
@@ -251,13 +261,31 @@ FORMATO DE RESPUESTA JSON:
   ]
 }
 
-IMPORTANTE:
-- Crea exactamente ${PROGRAM_CONFIG.TOTAL_WORKOUTS} workouts (${PROGRAM_CONFIG.WORKOUTS_PER_WEEK} por semana × ${PROGRAM_CONFIG.DURATION_WEEKS} semanas)
-- Cada workout debe tener los 6 bloques de la estructura Resilience Pro
-- Usa SOLO exercise_id que existan en la lista proporcionada
-- Respeta los enums y valores válidos especificados
-- Responde SOLO con JSON válido, sin texto adicional ni markdown
-- Progresa la dificultad: Semana 1-2 base, Semana 3-4 intensificación`
+🚨 REGLAS CRÍTICAS - OBLIGATORIAS 🚨
+
+1. DISTRIBUCIÓN DE WORKOUTS (MUY IMPORTANTE):
+   - Semana 1 DEBE tener EXACTAMENTE 3 workouts (week_number: 1)
+   - Semana 2 DEBE tener EXACTAMENTE 3 workouts (week_number: 2)
+   - Semana 3 DEBE tener EXACTAMENTE 3 workouts (week_number: 3)
+   - Semana 4 DEBE tener EXACTAMENTE 3 workouts (week_number: 4)
+   - Total: ${PROGRAM_CONFIG.TOTAL_WORKOUTS} workouts - NI UNO MENOS, NI UNO MÁS
+
+2. ESTRUCTURA:
+   - Cada workout debe tener los 6 bloques de la estructura Resilience Pro
+   
+3. EJERCICIOS:
+   - Usa SOLO exercise_id que existan en la lista proporcionada
+   - exercise_id DEBE ser un NÚMERO ENTERO, no un string
+   
+4. FORMATO:
+   - Respeta los enums y valores válidos especificados
+   - Responde SOLO con JSON válido, sin texto adicional ni markdown
+   
+5. PROGRESIÓN:
+   - Semana 1-2: fase base
+   - Semana 3-4: fase de intensificación
+
+⚠️ Si generas menos de 3 workouts para CUALQUIER semana, el programa será RECHAZADO ⚠️`
 }
 
 /**
@@ -333,14 +361,21 @@ ${exercisesList}
 
 INSTRUCCIONES ESPECÍFICAS:
 1. Crea un programa de EXACTAMENTE ${PROGRAM_CONFIG.DURATION_WEEKS} semanas
-2. Distribuye ${PROGRAM_CONFIG.WORKOUTS_PER_WEEK} workouts por semana (${PROGRAM_CONFIG.TOTAL_WORKOUTS} workouts totales)
+2. ⚠️ CRÍTICO: Cada semana DEBE tener EXACTAMENTE ${PROGRAM_CONFIG.WORKOUTS_PER_WEEK} workouts:
+   - Semana 1: 3 workouts (workout_order 1-3, week_number: 1)
+   - Semana 2: 3 workouts (workout_order 4-6, week_number: 2)
+   - Semana 3: 3 workouts (workout_order 7-9, week_number: 3)
+   - Semana 4: 3 workouts (workout_order 10-12, week_number: 4)
+   - TOTAL: ${PROGRAM_CONFIG.TOTAL_WORKOUTS} workouts - NO MENOS
 3. Cada workout debe durar aproximadamente ${preferredDuration} minutos
 4. Sigue la estructura de bloques Resilience Pro (Activación 1, Activación 2, Bloques 1-4)
 5. Selecciona ejercicios apropiados para nivel "${userData.fitness_level}"
 6. Alinea los ejercicios con los objetivos: ${userData.goals.join(', ')}
-7. Usa SOLO los exercise_id de la lista anterior
+7. Usa SOLO los exercise_id de la lista anterior (como NÚMEROS, no strings)
 8. Distribuye workouts estratégicamente (evita días consecutivos para principiantes)
 9. Progresa la dificultad a lo largo de las 4 semanas
+
+⚠️ VERIFICACIÓN FINAL: Antes de responder, cuenta los workouts por semana. CADA semana debe tener EXACTAMENTE 3 workouts.
 
 Crea un programa profesional siguiendo la metodología Resilience Pro.`
 }

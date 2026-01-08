@@ -46,11 +46,10 @@ export async function validateLLMResponse(
   }
 
   // Validate expected number of workouts (4 weeks × 3 per week = 12)
-  if (workouts.length < PROGRAM_CONFIG.TOTAL_WORKOUTS * 0.8) {
-    // Allow some flexibility (80% minimum)
+  if (workouts.length !== PROGRAM_CONFIG.TOTAL_WORKOUTS) {
     return {
       valid: false,
-      error: `Expected at least ${Math.floor(PROGRAM_CONFIG.TOTAL_WORKOUTS * 0.8)} workouts, got ${workouts.length}`,
+      error: `Expected exactly ${PROGRAM_CONFIG.TOTAL_WORKOUTS} workouts (${PROGRAM_CONFIG.WORKOUTS_PER_WEEK} per week × ${PROGRAM_CONFIG.DURATION_WEEKS} weeks), got ${workouts.length}`,
     }
   }
 
