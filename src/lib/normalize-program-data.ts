@@ -47,8 +47,29 @@ export function normalizeProgramData(data: LLMProgramResponse): LLMProgramRespon
         block.rest_between_exercises = 60 // Default value
       }
 
-      // Normalize exercises
-      block.exercises.forEach((exercise, exerciseIndex) => {
+      // Normalize exercises - handle case where LLM returns just IDs instead of objects
+      block.exercises = block.exercises.map((exercise, exerciseIndex) => {
+        // If exercise is just a number (exercise_id), convert to proper object
+        if (typeof exercise === 'number') {
+          return {
+            exercise_id: Math.floor(exercise),
+            reps: 10, // Default reps
+            exercise_order: exerciseIndex + 1,
+            weight_level: null,
+          }
+        }
+        
+        // If exercise is a string (exercise_id as string), convert to proper object
+        if (typeof exercise === 'string') {
+          return {
+            exercise_id: parseInt(exercise, 10),
+            reps: 10, // Default reps
+            exercise_order: exerciseIndex + 1,
+            weight_level: null,
+          }
+        }
+
+        // It's an object - normalize it
         // Normalize exercise_order (must be >= 1) - always use sequential indexing
         exercise.exercise_order = exerciseIndex + 1
 
@@ -67,6 +88,8 @@ export function normalizeProgramData(data: LLMProgramResponse): LLMProgramRespon
         if (typeof exercise.exercise_id === 'number') {
           exercise.exercise_id = Math.floor(exercise.exercise_id)
         }
+
+        return exercise
       })
     })
   })
