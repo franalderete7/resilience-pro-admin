@@ -55,7 +55,7 @@ export function normalizeProgramData(data: LLMProgramResponse): LLMProgramRespon
             exercise_id: Math.floor(exercise),
             reps: 10, // Default reps
             exercise_order: exerciseIndex + 1,
-            weight_level: null,
+            weight_level: undefined,
           }
         }
         
@@ -65,7 +65,7 @@ export function normalizeProgramData(data: LLMProgramResponse): LLMProgramRespon
             exercise_id: parseInt(exercise, 10),
             reps: 10, // Default reps
             exercise_order: exerciseIndex + 1,
-            weight_level: null,
+            weight_level: undefined,
           }
         }
 
