@@ -49,7 +49,7 @@ export async function validateLLMResponse(
   if (workouts.length !== PROGRAM_CONFIG.TOTAL_WORKOUTS) {
     // Count workouts per week to provide detailed feedback
     const workoutsPerWeek: Record<number, number> = {}
-    workouts.forEach((workout) => {
+    workouts.forEach((workout: any) => {
       const week = workout.week_number || 0
       workoutsPerWeek[week] = (workoutsPerWeek[week] || 0) + 1
     })
@@ -66,7 +66,7 @@ export async function validateLLMResponse(
   
   // Validate that each week has exactly 3 workouts
   const workoutsPerWeek: Record<number, number> = {}
-  workouts.forEach((workout) => {
+  workouts.forEach((workout: any) => {
     const week = workout.week_number || 0
     workoutsPerWeek[week] = (workoutsPerWeek[week] || 0) + 1
   })
