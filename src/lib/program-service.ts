@@ -132,10 +132,40 @@ export async function createProgramFromLLMResponse(
       // Create block_exercises
       // All values should already be normalized, but add final safety checks
       const blockExercises = block.exercises.map((exercise, index) => {
+        // Handle case where exercise might still be a number or string (shouldn't happen after normalization, but safety check)
+        let exerciseObj: {
+          exercise_id: number
+          reps?: number
+          exercise_order?: number
+          weight_level?: string | null
+        }
+        
+        if (typeof exercise === 'number') {
+          console.warn(`Warning: Exercise at index ${index} is still a number (${exercise}) after normalization. Converting to object.`)
+          exerciseObj = {
+            exercise_id: Math.floor(exercise),
+            reps: 10,
+            exercise_order: index + 1,
+            weight_level: null,
+          }
+        } else if (typeof exercise === 'string') {
+          console.warn(`Warning: Exercise at index ${index} is still a string (${exercise}) after normalization. Converting to object.`)
+          exerciseObj = {
+            exercise_id: parseInt(exercise, 10),
+            reps: 10,
+            exercise_order: index + 1,
+            weight_level: null,
+          }
+        } else if (!exercise || typeof exercise !== 'object') {
+          throw new Error(`Invalid exercise format at index ${index}: ${typeof exercise}. Expected object, got ${JSON.stringify(exercise)}`)
+        } else {
+          exerciseObj = exercise
+        }
+        
         // Final safety checks - ensure all values meet database constraints
-        const exerciseOrder = Math.max(1, Math.floor(exercise.exercise_order || index + 1))
-        const reps = Math.max(1, Math.floor(exercise.reps || 10)) // Default to 10 if invalid
-        const exerciseId = Math.floor(exercise.exercise_id)
+        const exerciseOrder = Math.max(1, Math.floor(exerciseObj.exercise_order || index + 1))
+        const reps = Math.max(1, Math.floor(exerciseObj.reps || 10)) // Default to 10 if invalid
+        const exerciseId = Math.floor(exerciseObj.exercise_id)
         
         // Validate critical fields
         if (exerciseOrder < 1) {
@@ -144,7 +174,7 @@ export async function createProgramFromLLMResponse(
         if (reps < 1) {
           throw new Error(`Invalid reps: ${reps}. Must be >= 1.`)
         }
-        if (!exerciseId || exerciseId < 1) {
+        if (!exerciseId || exerciseId < 1 || isNaN(exerciseId)) {
           throw new Error(`Invalid exercise_id: ${exerciseId}. Must be a positive integer.`)
         }
         
@@ -152,7 +182,7 @@ export async function createProgramFromLLMResponse(
           block_id: blockId,
           exercise_id: exerciseId,
           reps: reps,
-          weight_level: exercise.weight_level || null,
+          weight_level: exerciseObj.weight_level || null,
           exercise_order: exerciseOrder,
         }
       })
