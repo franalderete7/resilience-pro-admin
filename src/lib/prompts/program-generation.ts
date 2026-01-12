@@ -219,21 +219,21 @@ FORMATO DE RESPUESTA JSON:
           "block_type": "warmup",
           "sets": 1-2,
           "rest_between_exercises": 30,
-          "exercises": [/* 2-3 ejercicios de movilidad */]
+          "exercises": [/* 3 ejercicios de movilidad */]
         },
         {
           "name": "Activación 2 - Core y Estabilidad",
           "block_type": "warmup",
           "sets": 2,
           "rest_between_exercises": 30,
-          "exercises": [/* 2-3 ejercicios de core */]
+          "exercises": [/* 3 ejercicios de core */]
         },
         {
           "name": "Bloque 1 - Velocidad y Potencia",
           "block_type": "main",
           "sets": 3-4,
           "rest_between_exercises": 120-180,
-          "exercises": [/* 2-3 ejercicios explosivos */]
+          "exercises": [/* 3 ejercicios explosivos */]
         },
         {
           "name": "Bloque 2 - Fuerza Bilateral",
@@ -254,7 +254,7 @@ FORMATO DE RESPUESTA JSON:
           "block_type": "main",
           "sets": 2-3,
           "rest_between_exercises": 60,
-          "exercises": [/* 2-4 ejercicios accesorios */]
+          "exercises": [/* 3 ejercicios accesorios */]
         }
       ]
     }
