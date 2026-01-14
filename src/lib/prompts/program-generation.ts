@@ -127,6 +127,46 @@ Según el objetivo del usuario, aplicar los siguientes métodos:
    - Series: 3-5
    - Repeticiones: 3-8 (calidad sobre cantidad)
    - Descanso: 2-3 minutos (recuperación completa)
+
+⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻
+
+PLANIFICACIÓN DE REPETICIONES Y SERIES POR OBJETIVO:
+
+REGLAS PARA BLOQUES PRINCIPALES BILATERALES Y UNILATERALES (BLOQUE 2 y BLOQUE 3):
+Para personas INTERMEDIAS y AVANZADAS:
+- Planifica con 8, 6 y 5 repeticiones dependiendo del objetivo
+- A menor repeticiones, mayor será la carga
+- Añade 4 y 5 series (en vez de 3) para intermedios y avanzados, dependiendo del objetivo
+
+GUÍA ESPECÍFICA POR OBJETIVO:
+
+1. GANAR MASA MUSCULAR (Hipertrofia):
+   - Mayor volumen de series y repeticiones
+   - Series: 4-5 series
+   - Repeticiones: 8-12 repeticiones
+   - Carga: moderada a alta
+
+2. MANTENIMIENTO:
+   - Menos repeticiones, más peso
+   - Series: 3-4 series
+   - Repeticiones: 5-8 repeticiones
+   - Carga: alta a muy alta
+
+3. GANAR VELOCIDAD:
+   - Repeticiones intermedias (8-12 repeticiones)
+   - Menos carga, más velocidad de ejecución
+   - Series: 3-4 series
+   - Enfoque en velocidad de movimiento, no en carga máxima
+
+4. MEJORAR RESISTENCIA:
+   - Mayor número de repeticiones y series
+   - NO planificar convencional 3 series de 10 repeticiones
+   - Planificar de forma más específica: 4 series de 15 repeticiones o 4 series de 12 repeticiones
+   - Series: 4-5 series
+   - Repeticiones: 12-20 repeticiones
+   - Carga: moderada a baja
+
+⚠️ IMPORTANTE: Estas reglas aplican específicamente a los BLOQUES 2 (Fuerza Bilateral) y BLOQUE 3 (Fuerza Unilateral) para niveles intermedio y avanzado.
 `
 
 /**
