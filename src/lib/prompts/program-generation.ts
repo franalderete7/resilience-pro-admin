@@ -11,7 +11,7 @@ import { PROGRAM_CONFIG } from '../constants/exercise-categories'
  * Core training methodology and block structure for Resilience Pro programs.
  * This is the foundation of the traditional Resilience Pro training approach.
  */
-const TRAINING_METHODOLOGY = `
+export const DEFAULT_METHODOLOGY = `
 METODOLOGÍA DE ENTRENAMIENTO RESILIENCE PRO:
 
 El método de planificación sigue la siguiente línea de trabajo. Esta es la base del entrenamiento tradicional de Resilience Pro:
@@ -41,7 +41,7 @@ BLOQUE 1 (Main)
 • Ejercicios balísticos
 • Ejercicios pliométricos
 - Trabajo de potencia y velocidad explosiva
-- Categorías permitidas: ballistics and plyometrics, agility, running technique
+- Categorías permitidas: ballistics and plyometrics, agility, running technique, olympic-derivatives, accelerations
 
 ⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻
 
@@ -70,7 +70,7 @@ BLOQUE 4 (Main/Cooldown)
 • Ejercicios complementarios
 • Trabajo analítico
 - Músculos pequeños: bíceps, tríceps, deltoides, romboides, etc.
-- Categorías permitidas: accessories
+- Categorías permitidas: accessories, ankle-dominant
 - Trabajo de hipertrofia y acabado muscular
 
 ⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻
@@ -127,9 +127,9 @@ Según el objetivo del usuario, aplicar los siguientes métodos:
    - Series: 3-5
    - Repeticiones: 3-8 (calidad sobre cantidad)
    - Descanso: 2-3 minutos (recuperación completa)
+`
 
-⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻
-
+export const DEFAULT_RULES = `
 PLANIFICACIÓN DE REPETICIONES Y SERIES POR OBJETIVO:
 
 REGLAS PARA BLOQUES PRINCIPALES BILATERALES Y UNILATERALES (BLOQUE 2 y BLOQUE 3):
@@ -172,15 +172,18 @@ GUÍA ESPECÍFICA POR OBJETIVO:
 /**
  * Exercise category descriptions for the LLM to understand each category.
  */
-const CATEGORY_DESCRIPTIONS = `
+export const DEFAULT_CATEGORIES = `
 CATEGORÍAS DE EJERCICIOS DISPONIBLES:
 
 - accessories: Ejercicios accesorios para músculos pequeños (bíceps, tríceps, deltoides, romboides, etc.)
+- accelerations: Aceleraciones, arranques y técnica de velocidad
 - agility: Ejercicios de agilidad, cambios de dirección, coordinación
 - ballistics and plyometrics: Ejercicios balísticos y pliométricos, saltos, lanzamientos, movimientos explosivos
 - core: Ejercicios de core, estabilidad del tronco, anti-rotación, anti-extensión
+- olympic-derivatives: Derivados de levantamiento olímpico (clean, snatch, jerk y variantes)
 - hip-dominant: Ejercicios dominantes de cadera (peso muerto, hip thrust, buenos días, etc.)
 - knee-dominant: Ejercicios dominantes de rodilla (sentadillas, zancadas, step-ups, etc.)
+- ankle-dominant: Ejercicios dominantes de tobillo (pantorrillas, tibial anterior, saltos de tobillo)
 - pushes: Ejercicios de empuje (press de banca, press militar, flexiones, etc.)
 - isometrics: Ejercicios isométricos, holds, trabajo estático
 - mobility and flexibility: Ejercicios de movilidad articular y flexibilidad
@@ -189,15 +192,9 @@ CATEGORÍAS DE EJERCICIOS DISPONIBLES:
 `
 
 /**
- * Builds the complete system prompt for program generation.
+ * Structure and output format rules.
  */
-export function buildSystemPrompt(): string {
-  return `Eres un entrenador personal certificado de Resilience Pro con más de 10 años de experiencia diseñando programas de entrenamiento personalizados. Tu enfoque se basa en la metodología propia de Resilience Pro, principios científicos de fisiología del ejercicio, periodización y adaptación neuromuscular.
-
-${TRAINING_METHODOLOGY}
-
-${CATEGORY_DESCRIPTIONS}
-
+export const DEFAULT_STRUCTURE = `
 ⚠️ ESTRUCTURA DEL PROGRAMA - REQUISITO CRÍTICO ⚠️
 - Duración: SIEMPRE ${PROGRAM_CONFIG.DURATION_WEEKS} semanas EXACTAS
 - Frecuencia: EXACTAMENTE ${PROGRAM_CONFIG.WORKOUTS_PER_WEEK} entrenamientos por CADA semana
@@ -326,6 +323,33 @@ FORMATO DE RESPUESTA JSON:
    - Semana 3-4: fase de intensificación
 
 ⚠️ Si generas menos de 3 workouts para CUALQUIER semana, el programa será RECHAZADO ⚠️`
+
+export interface SystemPromptModules {
+  methodology?: string;
+  categories?: string;
+  rules?: string;
+  structure?: string;
+}
+
+/**
+ * Builds the complete system prompt for program generation.
+ * Accepts optional modules to override defaults.
+ */
+export function buildSystemPrompt(modules: SystemPromptModules = {}): string {
+  const methodology = modules.methodology || DEFAULT_METHODOLOGY;
+  const categories = modules.categories || DEFAULT_CATEGORIES;
+  const rules = modules.rules || DEFAULT_RULES;
+  const structure = modules.structure || DEFAULT_STRUCTURE;
+
+  return `Eres un entrenador personal certificado de Resilience Pro con más de 10 años de experiencia diseñando programas de entrenamiento personalizados. Tu enfoque se basa en la metodología propia de Resilience Pro, principios científicos de fisiología del ejercicio, periodización y adaptación neuromuscular.
+
+${methodology}
+
+${rules}
+
+${categories}
+
+${structure}`
 }
 
 /**
@@ -451,4 +475,3 @@ MÉTODO RECOMENDADO: Fuerza General
 MÉTODO: Híbrido según la estructura Resilience Pro
 - Combina elementos de fuerza, potencia y velocidad según el bloque`
 }
-

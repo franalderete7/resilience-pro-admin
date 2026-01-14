@@ -22,11 +22,14 @@ export interface ExerciseCategory {
 
 export const EXERCISE_CATEGORIES: ExerciseCategory[] = [
   { value: 'accessories', label: 'Accesorios' },
+  { value: 'accelerations', label: 'Aceleraciones' },
   { value: 'agility', label: 'Agilidad' },
   { value: 'ballistics and plyometrics', label: 'Balísticos y Plyo' },
   { value: 'core', label: 'Core' },
+  { value: 'olympic-derivatives', label: 'Derivados de Olímpicos' },
   { value: 'hip-dominant', label: 'Dominante de Cadera' },
   { value: 'knee-dominant', label: 'Dominante de Rodilla' },
+  { value: 'ankle-dominant', label: 'Dominante de Tobillo' },
   { value: 'pushes', label: 'Empujes' },
   { value: 'isometrics', label: 'Isos' },
   { value: 'mobility and flexibility', label: 'Movilidad y Flexibilidad' },

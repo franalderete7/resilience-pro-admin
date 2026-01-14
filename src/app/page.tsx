@@ -3,7 +3,9 @@
 import { useAuth } from '@/contexts/auth-context'
 import { SignInModal } from '@/components/sign-in-modal'
 import { ExerciseList } from '@/components/exercise-list'
+import { AiConfigDashboard } from '@/components/ai-config-dashboard'
 import { Button } from '@/components/ui/button'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 export default function Home() {
   const { adminUser, loading, signOut } = useAuth()
@@ -51,8 +53,21 @@ export default function Home() {
         </div>
       </header>
 
-      <main className="container mx-auto px-4 sm:px-6 pb-safe">
-        <ExerciseList />
+      <main className="container mx-auto px-4 sm:px-6 pb-safe pt-6">
+        <Tabs defaultValue="exercises" className="w-full">
+          <TabsList className="grid w-full max-w-md grid-cols-2 bg-zinc-800 mb-6">
+            <TabsTrigger value="exercises">Base de Datos Ejercicios</TabsTrigger>
+            <TabsTrigger value="ai-config">Configuración IA</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="exercises">
+            <ExerciseList />
+          </TabsContent>
+          
+          <TabsContent value="ai-config">
+            <AiConfigDashboard />
+          </TabsContent>
+        </Tabs>
       </main>
     </div>
   )

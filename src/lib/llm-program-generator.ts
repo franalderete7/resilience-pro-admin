@@ -2,6 +2,7 @@ import Groq from 'groq-sdk'
 import { supabaseAdmin } from './supabase-admin'
 import type { LLMProgramResponse, UserData, ProgramRequirements } from './types/program'
 import { buildSystemPrompt, buildUserPrompt } from './prompts/program-generation'
+import { getActiveSystemPrompt } from './prompts/prompt-service'
 import { PROGRAM_CONFIG } from './constants/exercise-categories'
 
 const groq = new Groq({
@@ -47,7 +48,10 @@ export async function generateProgramWithLLM(
     throw new Error('No exercises available in database')
   }
 
-  const systemPrompt = buildSystemPrompt()
+  // Fetch the active system prompt configuration from DB (or defaults)
+  const promptModules = await getActiveSystemPrompt()
+  const systemPrompt = buildSystemPrompt(promptModules)
+  
   let userPrompt = buildUserPrompt(userData, programRequirements, exercises)
 
   // Add feedback from previous attempt if this is a retry
