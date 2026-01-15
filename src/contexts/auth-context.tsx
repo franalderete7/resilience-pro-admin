@@ -29,7 +29,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (mounted) {
         setLoading((prev) => {
           if (prev) {
-            logger.warn('Auth loading timed out, forcing completion', {
+            logger.error('Auth loading timed out, forcing completion', {
               duration: Date.now() - startTime,
             })
             return false
@@ -37,7 +37,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return prev
         })
       }
-    }, 15000) // 15 seconds max load time
+    }, 5000) // 5 seconds max load time
 
     const initAuth = async () => {
       try {
@@ -91,24 +91,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const checkAdminRole = async (userId: string) => {
     try {
-      const { data, error } = await supabase
+      logger.debug('Checking admin role for user', { userId })
+      
+      // Add timeout to the query itself
+      const queryPromise = supabase
         .from('users')
         .select('*')
         .eq('id', userId)
         .eq('role', 'admin')
         .single()
+      
+      const timeoutPromise = new Promise<never>((_, reject) => 
+        setTimeout(() => reject(new Error('Admin check query timeout')), 3000)
+      )
+      
+      const { data, error } = await Promise.race([queryPromise, timeoutPromise]) as any
 
-      if (error || !data) {
-        // Not an admin, sign out
+      if (error) {
+        logger.error('Error fetching admin role', { error, userId })
+        // Not an admin or error, sign out
+        await supabase.auth.signOut()
+        setAdminUser(null)
+      } else if (!data) {
         logger.warn('User is not an admin, signing out', { userId })
         await supabase.auth.signOut()
         setAdminUser(null)
       } else {
-        logger.info('Admin verified', { userId })
+        logger.info('Admin verified', { userId, email: data.email })
         setAdminUser(data)
       }
     } catch (error) {
-      logger.error('Error checking admin role:', error)
+      logger.error('Exception checking admin role:', error)
       await supabase.auth.signOut()
       setAdminUser(null)
     } finally {
