@@ -78,7 +78,7 @@ FORMATO DE SALIDA (JSON EN ESPAÑOL):
         },
         { role: 'user', content: metaPrompt },
       ],
-      model: 'openai/gpt-oss-120b',
+      model: 'meta-llama/llama-4-scout-17b-16e-instruct',
       temperature: 0.1,
       response_format: { type: 'json_object' },
     })
