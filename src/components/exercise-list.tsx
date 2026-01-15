@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { CreateExerciseAIModal } from '@/components/create-exercise-ai-modal'
 import { Sparkles, Trash2, Activity, Dumbbell, ListOrdered, PlayCircle, Tag, BicepsFlexed, Search, X } from 'lucide-react'
 import { CATEGORY_LABELS, DIFFICULTY_LABELS, EXERCISE_CATEGORIES, DIFFICULTY_LEVELS } from '@/lib/constants/exercise-categories'
-import { useExercises, useDeleteExercise, useExerciseDetails, type Exercise } from '@/lib/queries/exercises'
+import { useExercises, useDeleteExercise, useExerciseDetails, type Exercise, type ExerciseMinimal } from '@/lib/queries/exercises'
 
 // Helper to format description steps
 const formatDescription = (description: string | null) => {
@@ -54,7 +54,7 @@ export function ExerciseList() {
   
   const [isVideoOpen, setIsVideoOpen] = useState(false)
   const [isCreateAIOpen, setIsCreateAIOpen] = useState(false)
-  const [deleteConfirm, setDeleteConfirm] = useState<Exercise | null>(null)
+  const [deleteConfirm, setDeleteConfirm] = useState<ExerciseMinimal | null>(null)
   const [videoError, setVideoError] = useState<string | null>(null)
 
   // Search and filter state
@@ -64,7 +64,7 @@ export function ExerciseList() {
 
   // Filtered exercises using useMemo for performance
   const filteredExercises = useMemo(() => {
-    return exercises.filter((exercise: Exercise) => {
+    return exercises.filter((exercise: ExerciseMinimal) => {
       const matchesSearch = exercise.name.toLowerCase().includes(searchQuery.toLowerCase())
       const matchesCategory = categoryFilter === 'all' || exercise.category === categoryFilter
       const matchesDifficulty = difficultyFilter === 'all' || exercise.difficulty_level === difficultyFilter
@@ -73,19 +73,17 @@ export function ExerciseList() {
     })
   }, [exercises, searchQuery, categoryFilter, difficultyFilter])
 
-  const handleExerciseClick = (exercise: Exercise) => {
-    if (exercise.video_url) {
-      setSelectedExerciseId(exercise.exercise_id)
-      setVideoError(null)
-      setIsVideoOpen(true)
-    }
+  const handleExerciseClick = (exercise: ExerciseMinimal) => {
+    setSelectedExerciseId(exercise.exercise_id)
+    setVideoError(null)
+    setIsVideoOpen(true)
   }
 
   const handleCreateSuccess = () => {
     // React Query will automatically refetch
   }
 
-  const handleDeleteClick = (e: React.MouseEvent, exercise: Exercise) => {
+  const handleDeleteClick = (e: React.MouseEvent, exercise: ExerciseMinimal) => {
     e.stopPropagation() // Prevent card click
     setDeleteConfirm(exercise)
   }
@@ -226,7 +224,7 @@ export function ExerciseList() {
         </div>
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-          {filteredExercises.map((exercise: Exercise) => (
+          {filteredExercises.map((exercise: ExerciseMinimal) => (
             <Card
               key={exercise.exercise_id}
               className="bg-zinc-900 border-zinc-800 text-white cursor-pointer hover:border-zinc-700 hover:shadow-xl transition-all duration-300 group flex flex-col relative overflow-hidden"
@@ -257,14 +255,12 @@ export function ExerciseList() {
                 </div>
                 )}
                 
-                {/* Play Overlay */}
-                {exercise.video_url && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                    <div className="bg-white/20 backdrop-blur-md p-3 rounded-full">
-                      <PlayCircle className="h-8 w-8 text-white fill-white/20" />
-                    </div>
-                    </div>
-                  )}
+                {/* Play Overlay - Always show on hover since we'll fetch video in modal */}
+                <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                  <div className="bg-white/20 backdrop-blur-md p-3 rounded-full">
+                    <PlayCircle className="h-8 w-8 text-white fill-white/20" />
+                  </div>
+                </div>
 
                 {/* Category Badge */}
                 {exercise.category && (

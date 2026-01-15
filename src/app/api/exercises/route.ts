@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
       .select(selectFields)
       .order('created_at', { ascending: false })
     
-    if (error) {
+    if (error || !data) {
       logger.error('Error fetching exercises from Supabase:', error)
       return errorResponse('Failed to fetch exercises', 500, error)
     }
@@ -63,16 +63,16 @@ export async function GET(request: NextRequest) {
     
     switch (fields) {
       case 'minimal':
-        typedData = data as ExerciseMinimal[]
+        typedData = data as unknown as ExerciseMinimal[]
         break
       case 'llm':
-        typedData = data as ExerciseLLM[]
+        typedData = data as unknown as ExerciseLLM[]
         break
       case 'validation':
-        typedData = data as ExerciseValidation[]
+        typedData = data as unknown as ExerciseValidation[]
         break
       default:
-        typedData = data as Exercise[]
+        typedData = data as unknown as Exercise[]
     }
     
     // Return data directly (not wrapped) for backward compatibility

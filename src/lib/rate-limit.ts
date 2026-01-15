@@ -72,8 +72,7 @@ try {
 function getIdentifier(request: NextRequest, userId?: string): string {
   if (userId) return `user:${userId}`
   
-  const ip = request.ip || 
-    request.headers.get('x-forwarded-for') || 
+  const ip = request.headers.get('x-forwarded-for') || 
     request.headers.get('x-real-ip') || 
     'anonymous'
   

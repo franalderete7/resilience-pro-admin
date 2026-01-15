@@ -4,6 +4,9 @@ import type { Exercise, ExerciseMinimal } from '@/lib/types/exercise'
 import type { ApiResponse } from '@/lib/types/api'
 import { logger } from '@/lib/logger'
 
+// Re-export types for convenience
+export type { Exercise, ExerciseMinimal } from '@/lib/types/exercise'
+
 /**
  * Fetches exercises from the cached API endpoint.
  * Uses 'minimal' fields by default for optimal performance.

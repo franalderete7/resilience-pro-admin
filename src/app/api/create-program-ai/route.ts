@@ -1,4 +1,4 @@
-import { NextRequest } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { authenticateRequest } from '@/lib/auth'
 import { generateProgramWithLLM } from '@/lib/llm-program-generator'
 import { validateLLMResponse } from '@/lib/program-validator'
@@ -78,10 +78,8 @@ export async function POST(request: NextRequest) {
         .select('exercise_id')
 
       if (exercisesError) {
-        return NextResponse.json(
-          { error: 'Failed to fetch exercises' },
-          { status: 500 }
-        )
+        logger.error('Failed to fetch exercises from Supabase', { error: exercisesError })
+        return errorResponse('Failed to fetch exercises', 500)
       }
 
       availableExerciseIds = exercises?.map((e) => e.exercise_id) || []

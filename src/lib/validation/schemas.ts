@@ -26,7 +26,7 @@ export const analyzeExerciseSchema = z.object({
 export const createProgramSchema = z.object({
   userData: z.object({
     fitness_level: z.enum(['beginner', 'intermediate', 'advanced'], {
-      required_error: 'Fitness level is required',
+      message: 'Fitness level is required',
     }),
     goals: z.array(z.string()).min(1, 'At least one goal is required'),
     gender: z.string().optional(),
