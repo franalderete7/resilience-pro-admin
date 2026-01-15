@@ -60,6 +60,11 @@ async function generateWeekWorkouts(
   const workoutOrderStart = (weekNumber - 1) * PROGRAM_CONFIG.WORKOUTS_PER_WEEK + 1
   const workoutOrderEnd = weekNumber * PROGRAM_CONFIG.WORKOUTS_PER_WEEK
 
+  // Phase description based on week number (Semanas 1-2: Base, Semanas 3-4: Intensificación)
+  const phaseDescription = weekNumber <= 2 
+    ? 'FASE BASE: menor volumen, énfasis en técnica y adaptación' 
+    : 'FASE INTENSIFICACIÓN: mayor volumen e intensidad'
+
   const weekPrompt = `GENERA SOLO LA SEMANA ${weekNumber} DE ${PROGRAM_CONFIG.DURATION_WEEKS}
 
 PERFIL DEL USUARIO:
@@ -73,36 +78,43 @@ REQUISITOS PARA SEMANA ${weekNumber}:
 - Genera EXACTAMENTE 3 workouts
 - workout_order: ${workoutOrderStart}, ${workoutOrderStart + 1}, ${workoutOrderEnd}
 - week_number: ${weekNumber} para todos
-- ${weekNumber === 1 ? 'Establece la base del programa' : ''}
-- ${weekNumber === 2 ? 'Incrementa ligeramente la intensidad' : ''}
-- ${weekNumber === 3 ? 'Pico de volumen/intensidad' : ''}
-- ${weekNumber === 4 ? 'Semana de descarga o consolidación' : ''}
+- ${phaseDescription}
 
 EJERCICIOS DISPONIBLES (formato: ID:nombre|categoría|músculos|dificultad):
 ${exercisesList}
 
-RESPONDE SOLO CON JSON EN ESTE FORMATO EXACTO:
+NOMENCLATURA OBLIGATORIA:
+- Nombres de workout: "Día ${workoutOrderStart}", "Día ${workoutOrderStart + 1}", "Día ${workoutOrderEnd}" (NO usar W1D1, S1D1, etc.)
+- Nombres de bloques: "Activación 1", "Activación 2", "Bloque 1", "Bloque 2", "Bloque 3", "Bloque 4"
+
+ESTRUCTURA DE BLOQUES (6 bloques por workout):
+1. Activación 1 (warmup): 3-5 ejercicios de mobility and flexibility, 1-2 sets
+2. Activación 2 (warmup): 2-3 ejercicios de core/isometrics, 2 sets
+3. Bloque 1 (main): 2-3 ejercicios de ballistics/plyometrics/agility/olympic-derivatives, 3-4 sets
+4. Bloque 2 (main): 2 ejercicios (1 inferior + 1 superior) de hip-dominant/knee-dominant/pushes/pulls, sets según objetivo
+5. Bloque 3 (main): 2 ejercicios unilaterales de hip-dominant/knee-dominant/pushes/pulls, sets según objetivo
+6. Bloque 4 (main): 2-3 ejercicios de accessories/ankle-dominant, 2-3 sets
+
+RESPONDE SOLO CON JSON:
 {
   "workouts": [
     {
-      "name": "W${weekNumber}D1: Nombre",
+      "name": "Día ${workoutOrderStart}",
       "week_number": ${weekNumber},
       "workout_order": ${workoutOrderStart},
       "day_of_week": 1,
       "estimated_duration_minutes": 60,
       "blocks": [
-        {
-          "name": "Activación 1",
-          "block_type": "warmup",
-          "sets": 2,
-          "exercises": [
-            {"exercise_id": 123, "reps": 10, "exercise_order": 1}
-          ]
-        }
+        {"name": "Activación 1", "block_type": "warmup", "sets": 2, "rest_between_exercises": 30, "exercises": [{"exercise_id": 123, "reps": 10, "exercise_order": 1, "weight_level": "no_weight"}]},
+        {"name": "Activación 2", "block_type": "warmup", "sets": 2, "rest_between_exercises": 30, "exercises": [...]},
+        {"name": "Bloque 1", "block_type": "main", "sets": 3, "rest_between_exercises": 120, "exercises": [...]},
+        {"name": "Bloque 2", "block_type": "main", "sets": 4, "rest_between_exercises": 90, "exercises": [...]},
+        {"name": "Bloque 3", "block_type": "main", "sets": 3, "rest_between_exercises": 90, "exercises": [...]},
+        {"name": "Bloque 4", "block_type": "main", "sets": 3, "rest_between_exercises": 60, "exercises": [...]}
       ]
     },
     {
-      "name": "W${weekNumber}D2: Nombre",
+      "name": "Día ${workoutOrderStart + 1}",
       "week_number": ${weekNumber},
       "workout_order": ${workoutOrderStart + 1},
       "day_of_week": 3,
@@ -110,7 +122,7 @@ RESPONDE SOLO CON JSON EN ESTE FORMATO EXACTO:
       "blocks": [...]
     },
     {
-      "name": "W${weekNumber}D3: Nombre",
+      "name": "Día ${workoutOrderEnd}",
       "week_number": ${weekNumber},
       "workout_order": ${workoutOrderEnd},
       "day_of_week": 5,
@@ -122,10 +134,9 @@ RESPONDE SOLO CON JSON EN ESTE FORMATO EXACTO:
 
 REGLAS:
 1. USA SOLO exercise_id de la lista (NO inventes IDs)
-2. Cada workout debe tener 4-6 bloques (Activación 1, Activación 2, Bloque 1-4)
-3. Cada bloque debe tener 2-4 ejercicios
-4. NO incluyas descripciones largas, solo nombres cortos
-5. RESPONDE SOLO CON EL JSON, nada más`
+2. Cada workout DEBE tener EXACTAMENTE 6 bloques en el orden especificado
+3. weight_level solo acepta: no_weight, light, medium, heavy
+4. RESPONDE SOLO CON EL JSON, nada más`
 
   const completion = await groq.chat.completions.create({
     messages: [
@@ -158,25 +169,57 @@ REGLAS:
 }
 
 /**
+ * Translates goal enums to human-readable Spanish names.
+ */
+function translateGoal(goal: string): string {
+  const goalTranslations: Record<string, string> = {
+    gain_muscle: 'Hipertrofia',
+    maintain: 'Mantenimiento',
+    improve_speed: 'Velocidad',
+    improve_endurance: 'Resistencia',
+    lose_weight: 'Pérdida de Peso',
+    increase_flexibility: 'Flexibilidad',
+  }
+  return goalTranslations[goal] || goal
+}
+
+/**
  * Generates program metadata deterministically (no LLM call needed).
+ * Follows naming conventions: human-readable Spanish, no enums or technical terms.
  */
 function generateProgramMetadata(
   userData: UserData,
   programRequirements: ProgramRequirements | undefined
 ): { name: string; description: string; difficulty_level: string } {
-  const levelNames: Record<string, string> = {
-    beginner: 'Principiante',
-    intermediate: 'Intermedio',
-    advanced: 'Avanzado',
-  }
+  // Translate goals to Spanish
+  const translatedGoals = userData.goals.map(translateGoal)
+  const mainGoal = translatedGoals[0] || 'Acondicionamiento General'
   
-  const levelName = levelNames[userData.fitness_level] || userData.fitness_level
-  const mainGoal = userData.goals[0] || 'General'
-  const focus = programRequirements?.focus || mainGoal
+  // Generate human-readable program name (no enums, no "Resilience Pro Nivel X")
+  const programNames: Record<string, string> = {
+    'Hipertrofia': 'Fuerza y Desarrollo Muscular',
+    'Mantenimiento': 'Mantenimiento y Tonificación',
+    'Velocidad': 'Potencia Explosiva',
+    'Resistencia': 'Resistencia y Acondicionamiento',
+    'Pérdida de Peso': 'Acondicionamiento Metabólico',
+    'Flexibilidad': 'Movilidad y Control Corporal',
+  }
+  const programName = programNames[mainGoal] || 'Acondicionamiento General'
+  
+  // Generate natural description (no enums)
+  const goalDescriptions: Record<string, string> = {
+    'Hipertrofia': 'desarrollar masa muscular y fuerza a través de trabajo con cargas progresivas',
+    'Mantenimiento': 'mantener tu condición física actual con trabajo equilibrado de fuerza y resistencia',
+    'Velocidad': 'mejorar tu velocidad y potencia explosiva mediante ejercicios balísticos y pliométricos',
+    'Resistencia': 'desarrollar tu capacidad cardiovascular y resistencia muscular con circuitos de alta intensidad',
+    'Pérdida de Peso': 'optimizar tu composición corporal combinando trabajo de fuerza y circuitos metabólicos',
+    'Flexibilidad': 'mejorar tu rango de movimiento y control corporal con énfasis en movilidad',
+  }
+  const goalDescription = goalDescriptions[mainGoal] || 'mejorar tu condición física general'
   
   return {
-    name: `Resilience Pro ${levelName} - ${focus}`.slice(0, 50),
-    description: `Programa de ${PROGRAM_CONFIG.DURATION_WEEKS} semanas diseñado para ${userData.goals.join(', ')}. Nivel: ${levelName}.`.slice(0, 200),
+    name: programName,
+    description: `Programa enfocado en ${goalDescription}. Incluye progresión semanal adaptada a tu nivel.`,
     difficulty_level: userData.fitness_level,
   }
 }
