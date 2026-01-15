@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
           content: prompt,
         },
       ],
-      model: 'meta-llama/llama-4-scout-17b-16e-instruct',
+      model: 'qwen/qwen3-32b',
       temperature: 0.7,
       max_tokens: 1500,
     })

@@ -143,7 +143,7 @@ REGLAS:
       { role: 'system', content: systemPrompt },
       { role: 'user', content: weekPrompt },
     ],
-    model: 'openai/gpt-oss-120b',
+    model: 'qwen/qwen3-32b',
     temperature: 0.5,
     max_tokens: 4000,
     response_format: { type: 'json_object' },
