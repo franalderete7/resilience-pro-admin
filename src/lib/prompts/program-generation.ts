@@ -421,6 +421,7 @@ ${trainingMethodHint}
 ${equipmentFilter}
 
 EJERCICIOS DISPONIBLES EN LA BASE DE DATOS:
+(⚠️ ADVERTENCIA: Debes usar EXCLUSIVAMENTE los IDs listados abajo. NO inventes IDs. Si un ejercicio no está en esta lista, NO LO USES.)
 ${exercisesList}
 
 INSTRUCCIONES ESPECÍFICAS:
@@ -435,11 +436,11 @@ INSTRUCCIONES ESPECÍFICAS:
 4. Sigue la estructura de bloques Resilience Pro (Activación 1, Activación 2, Bloques 1-4)
 5. Selecciona ejercicios apropiados para nivel "${userData.fitness_level}"
 6. Alinea los ejercicios con los objetivos: ${userData.goals.join(', ')}
-7. Usa SOLO los exercise_id de la lista anterior (como NÚMEROS, no strings)
+7. Usa SOLO los exercise_id de la lista anterior (COPIA EXACTA del número, NO inventes)
 8. Distribuye workouts estratégicamente (evita días consecutivos para principiantes)
 9. Progresa la dificultad a lo largo de las 4 semanas
 
-⚠️ VERIFICACIÓN FINAL: Antes de responder, cuenta los workouts por semana. CADA semana debe tener EXACTAMENTE 3 workouts.
+⚠️ VERIFICACIÓN FINAL: Antes de responder, cuenta los workouts por semana. CADA semana debe tener EXACTAMENTE 3 workouts. Y verifica que cada ID usado exista en la lista "EJERCICIOS DISPONIBLES".
 
 Crea un programa profesional siguiendo la metodología Resilience Pro.`
 }
