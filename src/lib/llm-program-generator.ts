@@ -158,50 +158,27 @@ REGLAS:
 }
 
 /**
- * Generates program metadata.
+ * Generates program metadata deterministically (no LLM call needed).
  */
-async function generateProgramMetadata(
+function generateProgramMetadata(
   userData: UserData,
-  programRequirements: ProgramRequirements | undefined,
-  systemPrompt: string
-): Promise<{ name: string; description: string; difficulty_level: string }> {
-  const metadataPrompt = `Genera metadatos para un programa de entrenamiento.
-
-PERFIL DEL USUARIO:
-- Nivel: ${userData.fitness_level}
-- Objetivos: ${userData.goals.join(', ')}
-- Enfoque: ${programRequirements?.focus || 'General'}
-
-RESPONDE SOLO CON JSON:
-{
-  "name": "Nombre del Programa (máx 50 caracteres)",
-  "description": "Descripción breve del programa (máx 200 caracteres)",
-  "difficulty_level": "${userData.fitness_level}"
-}`
-
-  const completion = await groq.chat.completions.create({
-    messages: [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: metadataPrompt },
-    ],
-    model: 'meta-llama/llama-4-scout-17b-16e-instruct',
-    temperature: 0.5,
-    max_tokens: 500,
-    response_format: { type: 'json_object' },
-  })
-
-  const responseText = completion.choices[0]?.message?.content
-
-  if (!responseText) {
-    // Fallback metadata
-    return {
-      name: `Programa ${userData.fitness_level} - ${userData.goals[0] || 'General'}`,
-      description: `Programa de ${PROGRAM_CONFIG.DURATION_WEEKS} semanas para ${userData.goals.join(', ')}`,
-      difficulty_level: userData.fitness_level,
-    }
+  programRequirements: ProgramRequirements | undefined
+): { name: string; description: string; difficulty_level: string } {
+  const levelNames: Record<string, string> = {
+    beginner: 'Principiante',
+    intermediate: 'Intermedio',
+    advanced: 'Avanzado',
   }
-
-  return JSON.parse(responseText)
+  
+  const levelName = levelNames[userData.fitness_level] || userData.fitness_level
+  const mainGoal = userData.goals[0] || 'General'
+  const focus = programRequirements?.focus || mainGoal
+  
+  return {
+    name: `Resilience Pro ${levelName} - ${focus}`.slice(0, 50),
+    description: `Programa de ${PROGRAM_CONFIG.DURATION_WEEKS} semanas diseñado para ${userData.goals.join(', ')}. Nivel: ${levelName}.`.slice(0, 200),
+    difficulty_level: userData.fitness_level,
+  }
 }
 
 /**
@@ -230,8 +207,8 @@ export async function generateProgramWithLLM(
   const promptModules = await getActiveSystemPrompt()
   const systemPrompt = buildSystemPrompt(promptModules)
   
-  // Generate program metadata first
-  const programMetadata = await generateProgramMetadata(userData, programRequirements, systemPrompt)
+  // Generate program metadata (deterministic, no LLM call)
+  const programMetadata = generateProgramMetadata(userData, programRequirements)
   
   // Generate each week separately to avoid token limits
   const allWorkouts: any[] = []
