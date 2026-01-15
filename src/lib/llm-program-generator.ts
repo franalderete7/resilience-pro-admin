@@ -143,7 +143,7 @@ REGLAS:
       { role: 'system', content: systemPrompt },
       { role: 'user', content: weekPrompt },
     ],
-    model: 'qwen/qwen3-32b',
+    model: 'meta-llama/llama-4-scout-17b-16e-instruct',
     temperature: 0.5,
     max_tokens: 4000,
     response_format: { type: 'json_object' },

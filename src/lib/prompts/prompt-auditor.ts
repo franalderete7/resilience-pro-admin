@@ -78,7 +78,7 @@ FORMATO DE SALIDA (JSON EN ESPAÑOL):
         },
         { role: 'user', content: metaPrompt },
       ],
-      model: 'qwen/qwen3-32b',
+      model: 'meta-llama/llama-4-scout-17b-16e-instruct',
       temperature: 0.1,
       response_format: { type: 'json_object' },
     })
@@ -132,7 +132,7 @@ ${structure}
         },
         { role: 'user', content: context + '\n\nPREGUNTA DEL USUARIO:\n' + question },
       ],
-      model: 'qwen/qwen3-32b',
+      model: 'meta-llama/llama-4-scout-17b-16e-instruct',
       temperature: 0.3,
       max_tokens: 1000,
     })
