@@ -23,7 +23,41 @@ export const DEFAULT_CATEGORIES = ``
 /**
  * Structure and output format rules.
  */
-export const DEFAULT_STRUCTURE = ``
+export const DEFAULT_STRUCTURE = `
+FORMATO DE RESPUESTA JSON (OBLIGATORIO):
+{
+  "program": {
+    "name": "Nombre del Programa",
+    "description": "Breve descripción",
+    "duration_weeks": 4
+  },
+  "workouts": [
+    {
+      "name": "W1D1: Nombre",
+      "week_number": 1,
+      "day_of_week": 1,
+      "workout_order": 1,
+      "blocks": [
+        {
+          "name": "Activación",
+          "block_type": "warmup",
+          "exercises": [
+             { "exercise_id": 123, "reps": 10, "exercise_order": 1 }
+          ]
+        }
+        // ... más bloques
+      ]
+    }
+    // ... DEBE HABER EXACTAMENTE 12 OBJETOS WORKOUT EN TOTAL
+  ]
+}
+
+REGLAS DE FORMATO:
+1. NO incluyas nombres de ejercicios dentro del objeto "exercises", SOLO "exercise_id".
+2. NO incluyas explicaciones fuera del JSON.
+3. Asegúrate de cerrar todos los brackets y llaves.
+4. Si el JSON es largo, NO LO CORTES. Prioriza la estructura completa sobre las descripciones detalladas.
+`
 
 export interface SystemPromptModules {
   methodology?: string;
@@ -135,12 +169,13 @@ INSTRUCCIONES ESPECÍFICAS:
    - Semana 3: 3 workouts (workout_order 7-9, week_number: 3)
    - Semana 4: 3 workouts (workout_order 10-12, week_number: 4)
    - TOTAL: ${PROGRAM_CONFIG.TOTAL_WORKOUTS} workouts - NO MENOS
+   (El error más común es olvidar la Semana 4. ¡Asegúrate de incluirla completa!)
 3. Cada workout debe durar aproximadamente ${preferredDuration} minutos
 4. Sigue la estructura de bloques Resilience Pro (Activación 1, Activación 2, Bloques 1-4)
 5. Selecciona ejercicios apropiados para nivel "${userData.fitness_level}"
 6. Alinea los ejercicios con los objetivos: ${userData.goals.join(', ')}
 7. Usa SOLO los exercise_id de la lista anterior (COPIA EXACTA del número, NO inventes)
-8. Distribuye workouts estratégicamente (evita días consecutivos para principiantes)
+8. NO incluyas nombres de ejercicios en el JSON de salida, solo IDs.
 9. Progresa la dificultad a lo largo de las 4 semanas
 
 ⚠️ VERIFICACIÓN FINAL: Antes de responder, cuenta los workouts por semana. CADA semana debe tener EXACTAMENTE 3 workouts. Y verifica que cada ID usado exista en la lista "EJERCICIOS DISPONIBLES".

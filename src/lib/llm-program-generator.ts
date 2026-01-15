@@ -64,8 +64,8 @@ export async function generateProgramWithLLM(
       { role: 'system', content: systemPrompt },
       { role: 'user', content: userPrompt },
     ],
-    model: 'meta-llama/llama-4-scout-17b-16e-instruct',
-    temperature: 0.8,
+    model: 'llama-3.3-70b-versatile',
+    temperature: 0.5,
     max_tokens: 8000, // Increased for 4-week programs
     response_format: { type: 'json_object' },
   })
