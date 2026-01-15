@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
     if (!validationResult.success) {
       logger.warn('Invalid program creation request', { 
         userId: user.id,
-        errors: validationResult.error.errors 
+        errors: validationResult.error.issues 
       })
       return validationErrorResponse(validationResult.error)
     }
