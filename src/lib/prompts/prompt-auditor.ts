@@ -11,7 +11,7 @@ export interface AuditResult {
     severity: 'crítico' | 'advertencia' | 'info'
     location: 'methodology' | 'rules' | 'categories'
     description: string
-    quote?: string // New field for specific evidence
+    quote?: string
   }>
   summary: string
 }
@@ -78,7 +78,7 @@ FORMATO DE SALIDA (JSON EN ESPAÑOL):
         },
         { role: 'user', content: metaPrompt },
       ],
-      model: 'meta-llama/llama-4-scout-17b-16e-instruct',
+      model: 'openai/gpt-oss-120b',
       temperature: 0.1,
       response_format: { type: 'json_object' },
     })
@@ -94,5 +94,52 @@ FORMATO DE SALIDA (JSON EN ESPAÑOL):
       summary: 'Error al ejecutar el análisis. Por favor intenta de nuevo.',
       issues: [],
     }
+  }
+}
+
+/**
+ * Allows the user to ask questions about the current system prompt configuration.
+ */
+export async function askSystemPrompt(
+  question: string,
+  methodology: string,
+  rules: string,
+  categories: string,
+  structure: string
+): Promise<string> {
+  const context = `
+CONTEXTO DEL SISTEMA ACTUAL (Resilience Pro):
+
+=== METODOLOGÍA ===
+${methodology}
+
+=== REGLAS ===
+${rules}
+
+=== CATEGORÍAS ===
+${categories}
+
+=== ESTRUCTURA JSON ===
+${structure}
+`
+
+  try {
+    const completion = await groq.chat.completions.create({
+      messages: [
+        { 
+          role: 'system', 
+          content: 'Eres el asistente experto del sistema de entrenamiento "Resilience Pro". Tienes acceso total a la configuración interna (prompts). Tu trabajo es responder dudas del entrenador sobre cómo está configurada la lógica actual. Responde en Español, sé conciso y cita las partes relevantes si es necesario.' 
+        },
+        { role: 'user', content: context + '\n\nPREGUNTA DEL USUARIO:\n' + question },
+      ],
+      model: 'openai/gpt-oss-120b',
+      temperature: 0.3,
+      max_tokens: 1000,
+    })
+
+    return completion.choices[0]?.message?.content || 'No pude generar una respuesta.'
+  } catch (error) {
+    console.error('Ask System Prompt Failed:', error)
+    throw new Error('Error al consultar a la IA.')
   }
 }

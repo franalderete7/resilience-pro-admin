@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Groq from 'groq-sdk'
+import { EXERCISE_CATEGORIES } from '@/lib/constants/exercise-categories'
 
 // Simple server-side logger
 const logError = (msg: string, err: any) => {
@@ -28,57 +29,52 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Build category list dynamically from constants
+    const categoryList = EXERCISE_CATEGORIES.map(
+      cat => `- ${cat.value} (${cat.label})`
+    ).join('\n')
+
     const prompt = `Analiza el siguiente nombre de ejercicio y proporciona información detallada en español.
     
-Nombre del archivo: "${fileName}"
+    Nombre del archivo: "${fileName}"
     
-Basándote en el nombre del ejercicio, genera la siguiente información en formato JSON:
+    Basándote en el nombre del ejercicio, genera la siguiente información en formato JSON:
+    
+    {
+      "name": "Nombre del ejercicio en español (limpio y formateado)",
+      "description": "1. Primer paso de ejecución\\n2. Segundo paso de ejecución\\n3. Tercer paso de ejecución\\n4. Etc.",
+      "categories": ["categoría1", "categoría2"],
+      "difficulty_level": "beginner|intermediate|advanced",
+      "muscle_groups": ["grupo muscular 1", "grupo muscular 2"],
+      "equipment_needed": ["equipo 1", "equipo 2"]
+    }
 
-{
-  "name": "Nombre del ejercicio en español (limpio y formateado)",
-  "description": "1. Primer paso de ejecución\\n2. Segundo paso de ejecución\\n3. Tercer paso de ejecución\\n4. Etc.",
-  "categories": ["categoría1", "categoría2"],
-  "difficulty_level": "beginner|intermediate|advanced",
-  "muscle_groups": ["grupo muscular 1", "grupo muscular 2"],
-  "equipment_needed": ["equipo 1", "equipo 2"]
-}
+    IMPORTANTE - Formato de description:
+    - La descripción debe ser PASOS DE EJECUCIÓN numerados
+    - Cada paso debe empezar con el número seguido de un punto y espacio (ej: "1. ")
+    - Separa cada paso con un salto de línea (\\n)
+    - Incluye entre 3 y 6 pasos claros y concisos
+    - Los pasos deben explicar CÓMO ejecutar el ejercicio correctamente
+    - Ejemplo de formato:
+      "1. Posición inicial: colócate de pie con los pies al ancho de los hombros\\n2. Flexiona las rodillas y baja las caderas como si fueras a sentarte\\n3. Mantén la espalda recta y el pecho elevado\\n4. Baja hasta que los muslos estén paralelos al suelo\\n5. Empuja con los talones para volver a la posición inicial"
 
-IMPORTANTE - Formato de description:
-- La descripción debe ser PASOS DE EJECUCIÓN numerados
-- Cada paso debe empezar con el número seguido de un punto y espacio (ej: "1. ")
-- Separa cada paso con un salto de línea (\\n)
-- Incluye entre 3 y 6 pasos claros y concisos
-- Los pasos deben explicar CÓMO ejecutar el ejercicio correctamente
-- Ejemplo de formato:
-  "1. Posición inicial: colócate de pie con los pies al ancho de los hombros\\n2. Flexiona las rodillas y baja las caderas como si fueras a sentarte\\n3. Mantén la espalda recta y el pecho elevado\\n4. Baja hasta que los muslos estén paralelos al suelo\\n5. Empuja con los talones para volver a la posición inicial"
+    Categorías válidas (usa los valores exactos en inglés):
+    ${categoryList}
 
-Categorías válidas (usa los valores exactos en inglés):
-- accessories (ejercicios accesorios para músculos pequeños)
-- agility (agilidad, cambios de dirección)
-- ballistics and plyometrics (ejercicios explosivos, saltos)
-- core (estabilidad del tronco)
-- hip-dominant (dominante de cadera: peso muerto, hip thrust)
-- knee-dominant (dominante de rodilla: sentadillas, zancadas)
-- pushes (empujes: press, flexiones)
-- isometrics (ejercicios isométricos, holds)
-- mobility and flexibility (movilidad y flexibilidad)
-- running technique (técnicas de carrera)
-- pulls (tracciones: remos, dominadas)
+    Niveles de dificultad:
+    - beginner (principiante)
+    - intermediate (intermedio)
+    - advanced (avanzado)
 
-Niveles de dificultad:
-- beginner (principiante)
-- intermediate (intermedio)
-- advanced (avanzado)
+    Instrucciones:
+    1. El nombre debe estar limpio (sin guiones, abreviaciones claras)
+    2. La descripción DEBE ser pasos de ejecución numerados (formato: "1. Paso\\n2. Paso\\n3. Paso")
+    3. Selecciona las categorías más apropiadas de la lista (puede ser más de una)
+    4. Infiere el nivel de dificultad basándote en la complejidad del ejercicio
+    5. Lista los grupos musculares principales que trabaja
+    6. Lista el equipo necesario (si no necesita equipo, devuelve un array vacío)
 
-Instrucciones:
-1. El nombre debe estar limpio (sin guiones, abreviaciones claras)
-2. La descripción DEBE ser pasos de ejecución numerados (formato: "1. Paso\\n2. Paso\\n3. Paso")
-3. Selecciona las categorías más apropiadas de la lista (puede ser más de una)
-4. Infiere el nivel de dificultad basándote en la complejidad del ejercicio
-5. Lista los grupos musculares principales que trabaja
-6. Lista el equipo necesario (si no necesita equipo, devuelve un array vacío)
-
-Responde SOLO con el JSON, sin texto adicional.`
+    Responde SOLO con el JSON, sin texto adicional.`
 
     const completion = await groq.chat.completions.create({
       messages: [
