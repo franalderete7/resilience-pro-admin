@@ -1,33 +1,41 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import Groq from 'groq-sdk'
 import { EXERCISE_CATEGORIES } from '@/lib/constants/exercise-categories'
-
-// Simple server-side logger
-const logError = (msg: string, err: any) => {
-  console.error(JSON.stringify({
-    level: 'error',
-    message: msg,
-    error: err instanceof Error ? err.message : err,
-    stack: err instanceof Error ? err.stack : undefined,
-    timestamp: new Date().toISOString()
-  }))
-}
+import { analyzeExerciseSchema } from '@/lib/validation/schemas'
+import { rateLimitExpensive } from '@/lib/rate-limit'
+import { 
+  successResponse, 
+  errorResponse, 
+  validationErrorResponse,
+  rateLimitErrorResponse,
+  handleRouteError 
+} from '@/lib/utils/api-response'
+import { logger } from '@/lib/logger'
+import { env } from '@/lib/config/env'
 
 const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY,
+  apiKey: env.GROQ_API_KEY,
 })
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
-    const fileName = body.filename || ''
-
-    if (!fileName) {
-      return NextResponse.json(
-        { error: 'Se requiere el nombre del archivo' },
-        { status: 400 }
-      )
+    // Rate limiting (expensive operation - LLM call)
+    const { success, remaining, reset } = await rateLimitExpensive(request)
+    if (!success) {
+      return rateLimitErrorResponse(reset)
     }
+
+    // Parse and validate request body
+    const body = await request.json()
+    const validationResult = analyzeExerciseSchema.safeParse(body)
+    
+    if (!validationResult.success) {
+      return validationErrorResponse(validationResult.error)
+    }
+
+    const { filename } = validationResult.data
+    
+    logger.info('Analyzing exercise', { filename })
 
     // Build category list dynamically from constants
     const categoryList = EXERCISE_CATEGORIES.map(
@@ -93,20 +101,25 @@ export async function POST(request: NextRequest) {
     // Extract JSON from response (in case there's extra text)
     const jsonMatch = responseText.match(/\{[\s\S]*\}/)
     if (!jsonMatch) {
-      throw new Error('No se pudo extraer JSON de la respuesta: ' + responseText.substring(0, 100))
+      logger.error('Failed to extract JSON from LLM response', { 
+        responsePreview: responseText.substring(0, 100) 
+      })
+      return errorResponse('No se pudo extraer JSON de la respuesta del modelo', 500)
     }
 
     const analysisResult = JSON.parse(jsonMatch[0])
 
-    return NextResponse.json({
-      success: true,
-      data: analysisResult,
+    logger.info('Exercise analysis completed', { 
+      filename,
+      category: analysisResult.categories?.[0],
+      difficulty: analysisResult.difficulty_level 
     })
-  } catch (error: any) {
-    logError('Error analyzing exercise:', error)
-    return NextResponse.json(
-      { error: error.message || 'Error al analizar el ejercicio' },
-      { status: 500 }
-    )
+
+    const response = successResponse(analysisResult)
+    response.headers.set('X-RateLimit-Remaining', String(remaining))
+    
+    return response
+  } catch (error) {
+    return handleRouteError(error)
   }
 }

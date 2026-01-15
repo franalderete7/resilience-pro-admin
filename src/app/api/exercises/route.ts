@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
+import { rateLimit } from '@/lib/rate-limit'
+import { successResponse, errorResponse, rateLimitErrorResponse, handleRouteError } from '@/lib/utils/api-response'
+import { logger } from '@/lib/logger'
+import type { Exercise, ExerciseMinimal, ExerciseLLM, ExerciseValidation } from '@/lib/types/exercise'
 
 // Cache for 1 hour
 export const revalidate = 3600
@@ -11,9 +15,17 @@ export const revalidate = 3600
  * 
  * Query params:
  * - fields: 'minimal' | 'full' | 'llm' | 'validation' (default: 'minimal')
+ * 
+ * Rate limit: 10 requests per minute
  */
 export async function GET(request: NextRequest) {
   try {
+    // Rate limiting
+    const { success, remaining, reset } = await rateLimit(request)
+    if (!success) {
+      return rateLimitErrorResponse(reset)
+    }
+
     const { searchParams } = new URL(request.url)
     const fields = searchParams.get('fields') || 'minimal'
     
@@ -34,30 +46,44 @@ export async function GET(request: NextRequest) {
     
     const selectFields = fieldSets[fields] || fieldSets.minimal
     
+    logger.debug('Fetching exercises', { fields, selectFields })
+    
     const { data, error } = await supabaseAdmin
       .from('exercises')
       .select(selectFields)
       .order('created_at', { ascending: false })
     
     if (error) {
-      console.error('Error fetching exercises:', error)
-      return NextResponse.json(
-        { error: error.message },
-        { status: 500 }
-      )
+      logger.error('Error fetching exercises from Supabase:', error)
+      return errorResponse('Failed to fetch exercises', 500, error)
     }
     
-    return NextResponse.json(data, {
-      headers: {
-        // Cache at CDN edge for 1 hour, serve stale for 24 hours while revalidating
-        'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400',
-      }
-    })
-  } catch (error: any) {
-    console.error('Error in exercises API:', error)
-    return NextResponse.json(
-      { error: error.message || 'Internal server error' },
-      { status: 500 }
-    )
+    // Type-safe response based on field selection
+    let typedData: Exercise[] | ExerciseMinimal[] | ExerciseLLM[] | ExerciseValidation[]
+    
+    switch (fields) {
+      case 'minimal':
+        typedData = data as ExerciseMinimal[]
+        break
+      case 'llm':
+        typedData = data as ExerciseLLM[]
+        break
+      case 'validation':
+        typedData = data as ExerciseValidation[]
+        break
+      default:
+        typedData = data as Exercise[]
+    }
+    
+    // Return data directly (not wrapped) for backward compatibility
+    const response = NextResponse.json(typedData)
+    
+    // Add caching headers
+    response.headers.set('Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=86400')
+    response.headers.set('X-RateLimit-Remaining', String(remaining))
+    
+    return response
+  } catch (error) {
+    return handleRouteError(error)
   }
 }

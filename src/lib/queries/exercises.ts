@@ -1,18 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-
-export interface Exercise {
-  exercise_id: number
-  name: string
-  description?: string | null
-  video_url?: string | null
-  image_url?: string | null
-  category?: string | null
-  muscle_groups?: string[] | null
-  equipment_needed?: string[] | null
-  difficulty_level?: string | null
-  created_at?: string
-}
+import type { Exercise, ExerciseMinimal } from '@/lib/types/exercise'
+import type { ApiResponse } from '@/lib/types/api'
+import { logger } from '@/lib/logger'
 
 /**
  * Fetches exercises from the cached API endpoint.
@@ -21,12 +11,20 @@ export interface Exercise {
 export function useExercises() {
   return useQuery({
     queryKey: ['exercises'],
-    queryFn: async (): Promise<Exercise[]> => {
+    queryFn: async (): Promise<ExerciseMinimal[]> => {
+      logger.debug('Fetching exercises from API')
       const res = await fetch('/api/exercises?fields=minimal')
+      
       if (!res.ok) {
-        throw new Error('Failed to fetch exercises')
+        const error = await res.json().catch(() => ({ error: 'Failed to fetch exercises' }))
+        logger.error('Failed to fetch exercises', { status: res.status, error })
+        throw new Error(error.error || 'Failed to fetch exercises')
       }
-      return res.json()
+      
+      const data: ExerciseMinimal[] = await res.json()
+      
+      logger.debug('Exercises fetched successfully', { count: data.length })
+      return data
     },
     staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
     gcTime: 30 * 60 * 1000, // Keep in cache for 30 minutes (formerly cacheTime)
@@ -68,16 +66,27 @@ export function useDeleteExercise() {
   
   return useMutation({
     mutationFn: async (exerciseId: number) => {
+      logger.info('Deleting exercise', { exerciseId })
+      
       const { error } = await supabase
         .from('exercises')
         .delete()
         .eq('exercise_id', exerciseId)
       
-      if (error) throw error
+      if (error) {
+        logger.error('Failed to delete exercise', { exerciseId, error })
+        throw error
+      }
+      
+      logger.info('Exercise deleted successfully', { exerciseId })
     },
-    onSuccess: () => {
+    onSuccess: (_, exerciseId) => {
+      logger.debug('Invalidating exercises cache after delete', { exerciseId })
       // Invalidate and refetch exercises list
       queryClient.invalidateQueries({ queryKey: ['exercises'] })
+    },
+    onError: (error, exerciseId) => {
+      logger.error('Delete exercise mutation failed', { exerciseId, error })
     },
   })
 }

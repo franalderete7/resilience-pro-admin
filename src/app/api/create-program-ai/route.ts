@@ -1,30 +1,21 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { authenticateRequest } from '@/lib/auth'
 import { generateProgramWithLLM } from '@/lib/llm-program-generator'
 import { validateLLMResponse } from '@/lib/program-validator'
 import { createProgramFromLLMResponse } from '@/lib/program-service'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { normalizeProgramData } from '@/lib/normalize-program-data'
-
-interface RequestBody {
-  userData: {
-    fitness_level: 'beginner' | 'intermediate' | 'advanced'
-    goals: string[]
-    gender?: string
-    height?: number
-    weight?: number
-    weight_goal?: number
-    preferences?: {
-      available_equipment?: string[]
-      workout_days_per_week?: number
-      preferred_duration_minutes?: number
-    }
-  }
-  programRequirements?: {
-    duration_weeks?: number
-    focus?: string
-  }
-}
+import { createProgramSchema } from '@/lib/validation/schemas'
+import { rateLimitExpensive } from '@/lib/rate-limit'
+import { 
+  successResponse, 
+  errorResponse, 
+  unauthorizedResponse,
+  validationErrorResponse,
+  rateLimitErrorResponse,
+  handleRouteError 
+} from '@/lib/utils/api-response'
+import { logger } from '@/lib/logger'
 
 export async function POST(request: NextRequest) {
   try {
@@ -32,20 +23,38 @@ export async function POST(request: NextRequest) {
     const { error: authError, user } = await authenticateRequest(request)
 
     if (authError || !user) {
-      return NextResponse.json({ error: authError || 'Unauthorized' }, { status: 401 })
+      logger.warn('Unauthorized program creation attempt', { error: authError })
+      return unauthorizedResponse(authError || 'Unauthorized')
     }
 
-    // 2. Parse request body
-    const body: RequestBody = await request.json()
-
-    if (!body.userData || !body.userData.fitness_level || !body.userData.goals) {
-      return NextResponse.json(
-        { error: 'Missing required fields: userData.fitness_level and userData.goals' },
-        { status: 400 }
-      )
+    // 2. Rate limiting (expensive operation - multiple LLM calls)
+    const { success, remaining, reset } = await rateLimitExpensive(request, user.id)
+    if (!success) {
+      logger.warn('Rate limit exceeded for program creation', { userId: user.id })
+      return rateLimitErrorResponse(reset)
     }
 
-    // 3. Get available exercise IDs for validation from cached API
+    // 3. Parse and validate request body
+    const body = await request.json()
+    const validationResult = createProgramSchema.safeParse(body)
+    
+    if (!validationResult.success) {
+      logger.warn('Invalid program creation request', { 
+        userId: user.id,
+        errors: validationResult.error.errors 
+      })
+      return validationErrorResponse(validationResult.error)
+    }
+
+    const { userData, programRequirements } = validationResult.data
+    
+    logger.info('Starting program generation', { 
+      userId: user.id,
+      fitnessLevel: userData.fitness_level,
+      goals: userData.goals 
+    })
+
+    // 4. Get available exercise IDs for validation from cached API
     let availableExerciseIds: number[] = []
     
     try {
@@ -79,13 +88,11 @@ export async function POST(request: NextRequest) {
     }
 
     if (availableExerciseIds.length === 0) {
-      return NextResponse.json(
-        { error: 'No exercises available in database' },
-        { status: 400 }
-      )
+      logger.error('No exercises available in database')
+      return errorResponse('No exercises available in database', 400)
     }
 
-    // 4. Generate program with LLM with retry mechanism
+    // 5. Generate program with LLM with retry mechanism
     const MAX_RETRIES = 3
     let llmResponse: any = null
     let normalizedResponse: any = null
@@ -122,7 +129,11 @@ export async function POST(request: NextRequest) {
           
           // Wait a bit before retrying (exponential backoff)
           await new Promise(resolve => setTimeout(resolve, 1000 * attempt))
-          console.log(`Program generation attempt ${attempt} failed. Retrying... Error: ${lastError}`)
+          logger.warn(`Program generation attempt ${attempt} failed. Retrying...`, { 
+            userId: user.id,
+            attempt,
+            error: lastError 
+          })
         }
       } catch (error: any) {
         lastError = error.message || 'Failed to generate program'
@@ -131,7 +142,11 @@ export async function POST(request: NextRequest) {
           throw error // Re-throw on last attempt
         }
         
-        console.error(`Program generation attempt ${attempt} threw error:`, error)
+        logger.error(`Program generation attempt ${attempt} threw error`, { 
+          userId: user.id,
+          attempt,
+          error 
+        })
         await new Promise(resolve => setTimeout(resolve, 1000 * attempt))
       }
     }
@@ -149,22 +164,23 @@ export async function POST(request: NextRequest) {
     }
 
     // 6. Create program in database
+    logger.info('Creating program in database', { userId: user.id })
     const createdProgram = await createProgramFromLLMResponse(user.id, validation.data)
 
-    return NextResponse.json(
-      {
-        success: true,
-        program_id: createdProgram.program_id,
-        program: createdProgram,
-      },
-      { status: 201 }
-    )
-  } catch (error: any) {
-    console.error('Error creating program:', error)
-    return NextResponse.json(
-      { error: error.message || 'Internal server error' },
-      { status: 500 }
-    )
+    logger.info('Program created successfully', { 
+      userId: user.id,
+      programId: createdProgram.program_id 
+    })
+
+    const response = successResponse({ 
+      program_id: createdProgram.program_id,
+      program: createdProgram 
+    }, 201)
+    response.headers.set('X-RateLimit-Remaining', String(remaining))
+    
+    return response
+  } catch (error) {
+    return handleRouteError(error)
   }
 }
 
