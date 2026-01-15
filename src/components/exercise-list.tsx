@@ -46,7 +46,7 @@ const formatDescription = (description: string | null) => {
 }
 
 export function ExerciseList() {
-  const { data: exercises = [], isLoading } = useExercises()
+  const { data: exercises = [], isLoading, error, refetch } = useExercises()
   const deleteExercise = useDeleteExercise()
   
   const [selectedExerciseId, setSelectedExerciseId] = useState<number | null>(null)
@@ -111,7 +111,29 @@ export function ExerciseList() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center p-12">
-        <p className="text-zinc-400">Cargando ejercicios...</p>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-zinc-400">Cargando ejercicios...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center p-12">
+        <div className="text-center max-w-md">
+          <div className="bg-red-500/10 p-4 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+            <Activity className="h-8 w-8 text-red-500" />
+          </div>
+          <h3 className="text-xl font-semibold text-white mb-2">Error al cargar ejercicios</h3>
+          <p className="text-zinc-400 mb-6">
+            No se pudieron cargar los ejercicios. Por favor, verifica tu conexión e intenta de nuevo.
+          </p>
+          <Button onClick={() => refetch()} className="bg-blue-600 hover:bg-blue-700">
+            Reintentar
+          </Button>
+        </div>
       </div>
     )
   }

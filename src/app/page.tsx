@@ -1,11 +1,14 @@
 'use client'
 
+import { Suspense } from 'react'
 import { useAuth } from '@/contexts/auth-context'
 import { SignInModal } from '@/components/sign-in-modal'
 import { ExerciseList } from '@/components/exercise-list'
 import { AiConfigDashboard } from '@/components/ai-config-dashboard'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { ErrorBoundary } from '@/components/error-boundary'
+import { LoadingState } from '@/components/ui/loading-states'
 
 export default function Home() {
   const { adminUser, loading, signOut } = useAuth()
@@ -61,11 +64,19 @@ export default function Home() {
           </TabsList>
           
           <TabsContent value="exercises">
-            <ExerciseList />
+            <ErrorBoundary>
+              <Suspense fallback={<LoadingState message="Cargando ejercicios..." />}>
+                <ExerciseList />
+              </Suspense>
+            </ErrorBoundary>
           </TabsContent>
           
           <TabsContent value="ai-config">
-            <AiConfigDashboard />
+            <ErrorBoundary>
+              <Suspense fallback={<LoadingState message="Cargando configuración..." />}>
+                <AiConfigDashboard />
+              </Suspense>
+            </ErrorBoundary>
           </TabsContent>
         </Tabs>
       </main>
