@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
 
     const prompt = `Analiza el siguiente nombre de ejercicio y proporciona información detallada en español.
     
-    Nombre del archivo: "${fileName}"
+    Nombre del archivo: "${filename}"
     
     Basándote en el nombre del ejercicio, genera la siguiente información en formato JSON:
     
