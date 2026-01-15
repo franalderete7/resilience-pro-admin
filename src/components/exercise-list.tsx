@@ -50,7 +50,7 @@ export function ExerciseList() {
   const deleteExercise = useDeleteExercise()
   
   const [selectedExerciseId, setSelectedExerciseId] = useState<number | null>(null)
-  const { data: selectedExercise } = useExerciseDetails(selectedExerciseId)
+  const { data: selectedExercise, isLoading: isLoadingDetails } = useExerciseDetails(selectedExerciseId)
   
   const [isVideoOpen, setIsVideoOpen] = useState(false)
   const [isCreateAIOpen, setIsCreateAIOpen] = useState(false)
@@ -294,12 +294,21 @@ export function ExerciseList() {
         <DialogContent className="max-w-6xl w-full max-h-[90vh] flex flex-col bg-zinc-900 border-zinc-800 text-white p-0 overflow-hidden">
           <DialogHeader className="p-6 pb-2 shrink-0">
             <DialogTitle className="text-white text-2xl sm:text-3xl font-bold flex items-center gap-2">
-              {selectedExercise?.name}
+              {isLoadingDetails ? (
+                <div className="h-8 w-64 bg-zinc-800 animate-pulse rounded"></div>
+              ) : (
+                selectedExercise?.name
+              )}
             </DialogTitle>
           </DialogHeader>
           
           <div className="flex-1 overflow-y-auto p-6 pt-2">
-            {selectedExercise?.video_url && (
+            {isLoadingDetails ? (
+              <div className="flex flex-col items-center justify-center py-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mb-4"></div>
+                <p className="text-zinc-400">Cargando detalles del ejercicio...</p>
+              </div>
+            ) : selectedExercise?.video_url ? (
             <div className="aspect-[9/16] max-h-[60vh] w-full max-w-sm mx-auto bg-black rounded-xl overflow-hidden relative shadow-2xl border border-zinc-800">
               {videoError ? (
                 <div className="w-full h-full flex flex-col items-center justify-center text-center p-4">
@@ -363,9 +372,18 @@ export function ExerciseList() {
                 </video>
               )}
             </div>
-          )}
+            ) : (
+              <div className="aspect-[9/16] max-h-[60vh] w-full max-w-sm mx-auto bg-zinc-800/40 rounded-xl overflow-hidden relative shadow-2xl border border-zinc-800 flex items-center justify-center">
+                <div className="text-center p-6">
+                  <PlayCircle className="h-16 w-16 text-zinc-600 mx-auto mb-4" />
+                  <p className="text-zinc-400">No hay video disponible para este ejercicio</p>
+                </div>
+              </div>
+            )}
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6">
+          {!isLoadingDetails && (
+            <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6">
             {selectedExercise?.category && (
               <div className="bg-zinc-800/40 p-4 rounded-xl border border-zinc-800/50 flex flex-col justify-center">
                 <div className="flex items-center gap-2 mb-2">
@@ -437,6 +455,8 @@ export function ExerciseList() {
                 </p>
               </div>
             </div>
+          )}
+          </>
           )}
           </div>
         </DialogContent>
