@@ -1,8 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { useState, useMemo } from 'react'
+import { Card, CardContent } from '@/components/ui/card'
 import {
   Dialog,
   DialogContent,
@@ -10,22 +9,12 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { CreateExerciseAIModal } from '@/components/create-exercise-ai-modal'
-import { Sparkles, Trash2, Activity, Dumbbell, ListOrdered, PlayCircle, Tag, BicepsFlexed } from 'lucide-react'
-import { CATEGORY_LABELS, DIFFICULTY_LABELS } from '@/lib/constants/exercise-categories'
-
-interface Exercise {
-  exercise_id: number
-  name: string
-  description: string | null
-  video_url: string | null
-  image_url: string | null
-  category: string | null
-  muscle_groups: string[] | null
-  equipment_needed: string[] | null
-  difficulty_level: string | null
-  created_at: string
-}
+import { Sparkles, Trash2, Activity, Dumbbell, ListOrdered, PlayCircle, Tag, BicepsFlexed, Search, X } from 'lucide-react'
+import { CATEGORY_LABELS, DIFFICULTY_LABELS, EXERCISE_CATEGORIES, DIFFICULTY_LEVELS } from '@/lib/constants/exercise-categories'
+import { useExercises, useDeleteExercise, useExerciseDetails, type Exercise } from '@/lib/queries/exercises'
 
 // Helper to format description steps
 const formatDescription = (description: string | null) => {
@@ -57,45 +46,43 @@ const formatDescription = (description: string | null) => {
 }
 
 export function ExerciseList() {
-  const [exercises, setExercises] = useState<Exercise[]>([])
-  const [loading, setLoading] = useState(true)
-  const [selectedExercise, setSelectedExercise] = useState<Exercise | null>(null)
+  const { data: exercises = [], isLoading } = useExercises()
+  const deleteExercise = useDeleteExercise()
+  
+  const [selectedExerciseId, setSelectedExerciseId] = useState<number | null>(null)
+  const { data: selectedExercise } = useExerciseDetails(selectedExerciseId)
+  
   const [isVideoOpen, setIsVideoOpen] = useState(false)
   const [isCreateAIOpen, setIsCreateAIOpen] = useState(false)
-  const [deletingId, setDeletingId] = useState<number | null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState<Exercise | null>(null)
   const [videoError, setVideoError] = useState<string | null>(null)
 
-  useEffect(() => {
-    fetchExercises()
-  }, [])
+  // Search and filter state
+  const [searchQuery, setSearchQuery] = useState('')
+  const [categoryFilter, setCategoryFilter] = useState<string>('all')
+  const [difficultyFilter, setDifficultyFilter] = useState<string>('all')
 
-  const fetchExercises = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('exercises')
-        .select('*')
-        .order('created_at', { ascending: false })
-
-      if (error) throw error
-      setExercises(data || [])
-    } catch (error) {
-      console.error('Error fetching exercises:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
+  // Filtered exercises using useMemo for performance
+  const filteredExercises = useMemo(() => {
+    return exercises.filter((exercise: Exercise) => {
+      const matchesSearch = exercise.name.toLowerCase().includes(searchQuery.toLowerCase())
+      const matchesCategory = categoryFilter === 'all' || exercise.category === categoryFilter
+      const matchesDifficulty = difficultyFilter === 'all' || exercise.difficulty_level === difficultyFilter
+      
+      return matchesSearch && matchesCategory && matchesDifficulty
+    })
+  }, [exercises, searchQuery, categoryFilter, difficultyFilter])
 
   const handleExerciseClick = (exercise: Exercise) => {
     if (exercise.video_url) {
-      setSelectedExercise(exercise)
+      setSelectedExerciseId(exercise.exercise_id)
       setVideoError(null)
       setIsVideoOpen(true)
     }
   }
 
   const handleCreateSuccess = () => {
-    fetchExercises()
+    // React Query will automatically refetch
   }
 
   const handleDeleteClick = (e: React.MouseEvent, exercise: Exercise) => {
@@ -106,27 +93,24 @@ export function ExerciseList() {
   const handleDeleteConfirm = async () => {
     if (!deleteConfirm) return
 
-    setDeletingId(deleteConfirm.exercise_id)
     try {
-      const { error } = await supabase
-        .from('exercises')
-        .delete()
-        .eq('exercise_id', deleteConfirm.exercise_id)
-
-      if (error) throw error
-
-      // Refresh exercises list
-      await fetchExercises()
+      await deleteExercise.mutateAsync(deleteConfirm.exercise_id)
       setDeleteConfirm(null)
     } catch (error: any) {
       console.error('Error deleting exercise:', error)
       alert(`Error al eliminar ejercicio: ${error.message}`)
-    } finally {
-      setDeletingId(null)
     }
   }
 
-  if (loading) {
+  const clearFilters = () => {
+    setSearchQuery('')
+    setCategoryFilter('all')
+    setDifficultyFilter('all')
+  }
+
+  const hasActiveFilters = searchQuery || categoryFilter !== 'all' || difficultyFilter !== 'all'
+
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center p-12">
         <p className="text-zinc-400">Cargando ejercicios...</p>
@@ -140,7 +124,8 @@ export function ExerciseList() {
         <div className="flex-1">
           <h2 className="text-2xl sm:text-3xl font-bold text-white">Ejercicios</h2>
           <p className="text-zinc-400 mt-1 text-sm sm:text-base">
-            {exercises.length} {exercises.length === 1 ? 'ejercicio' : 'ejercicios'} en total
+            {filteredExercises.length} {filteredExercises.length === 1 ? 'ejercicio' : 'ejercicios'}
+            {hasActiveFilters && ` de ${exercises.length} total`}
           </p>
         </div>
         <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full sm:w-auto">
@@ -155,22 +140,93 @@ export function ExerciseList() {
         </div>
       </div>
 
-      {exercises.length === 0 ? (
-        <div className="flex flex-col items-center justify-center p-8 sm:p-12 border-2 border-dashed border-zinc-700 rounded-lg">
-          <p className="text-zinc-400 mb-4 text-center">No hay ejercicios aún</p>
-          <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-            <Button
-              onClick={() => setIsCreateAIOpen(true)}
-              className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white cursor-pointer w-full sm:w-auto min-h-[44px] touch-manipulation"
-            >
-              <Sparkles className="mr-2 h-4 w-4" />
-              Crear con IA
-            </Button>
+      {/* Search and Filters */}
+      <div className="mb-6 space-y-3">
+        <div className="flex flex-col sm:flex-row gap-3">
+          {/* Search Input */}
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
+            <Input
+              type="text"
+              placeholder="Buscar ejercicios..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10 bg-zinc-800 border-zinc-700 text-white placeholder:text-zinc-500"
+            />
           </div>
+
+          {/* Category Filter */}
+          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+            <SelectTrigger className="w-full sm:w-[200px] bg-zinc-800 border-zinc-700 text-white">
+              <SelectValue placeholder="Categoría" />
+            </SelectTrigger>
+            <SelectContent className="bg-zinc-800 border-zinc-700 text-white">
+              <SelectItem value="all">Todas las categorías</SelectItem>
+              {EXERCISE_CATEGORIES.map((cat) => (
+                <SelectItem key={cat.value} value={cat.value}>
+                  {cat.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {/* Difficulty Filter */}
+          <Select value={difficultyFilter} onValueChange={setDifficultyFilter}>
+            <SelectTrigger className="w-full sm:w-[200px] bg-zinc-800 border-zinc-700 text-white">
+              <SelectValue placeholder="Dificultad" />
+            </SelectTrigger>
+            <SelectContent className="bg-zinc-800 border-zinc-700 text-white">
+              <SelectItem value="all">Todas las dificultades</SelectItem>
+              {DIFFICULTY_LEVELS.map((level) => (
+                <SelectItem key={level.value} value={level.value}>
+                  {level.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {/* Clear Filters Button */}
+          {hasActiveFilters && (
+            <Button
+              onClick={clearFilters}
+              variant="outline"
+              className="border-zinc-700 text-zinc-400 hover:text-white hover:bg-zinc-800"
+            >
+              <X className="h-4 w-4 mr-2" />
+              Limpiar
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {filteredExercises.length === 0 ? (
+        <div className="flex flex-col items-center justify-center p-8 sm:p-12 border-2 border-dashed border-zinc-700 rounded-lg">
+          <p className="text-zinc-400 mb-4 text-center">
+            {hasActiveFilters ? 'No se encontraron ejercicios con estos filtros' : 'No hay ejercicios aún'}
+          </p>
+          {hasActiveFilters ? (
+            <Button
+              onClick={clearFilters}
+              variant="outline"
+              className="border-zinc-700 text-white hover:bg-zinc-800"
+            >
+              Limpiar filtros
+            </Button>
+          ) : (
+            <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+              <Button
+                onClick={() => setIsCreateAIOpen(true)}
+                className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white cursor-pointer w-full sm:w-auto min-h-[44px] touch-manipulation"
+              >
+                <Sparkles className="mr-2 h-4 w-4" />
+                Crear con IA
+              </Button>
+            </div>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-          {exercises.map((exercise) => (
+          {filteredExercises.map((exercise: Exercise) => (
             <Card
               key={exercise.exercise_id}
               className="bg-zinc-900 border-zinc-800 text-white cursor-pointer hover:border-zinc-700 hover:shadow-xl transition-all duration-300 group flex flex-col relative overflow-hidden"
@@ -179,7 +235,7 @@ export function ExerciseList() {
               {/* Delete button - top right */}
               <button
                 onClick={(e) => handleDeleteClick(e, exercise)}
-                disabled={deletingId === exercise.exercise_id}
+                disabled={deleteExercise.isPending && deleteConfirm?.exercise_id === exercise.exercise_id}
                 className="absolute top-2 right-2 z-20 p-2 rounded-full bg-red-600/90 hover:bg-red-600 text-white opacity-0 group-hover:opacity-100 transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed backdrop-blur-sm"
                 title="Eliminar ejercicio"
               >
@@ -420,10 +476,10 @@ export function ExerciseList() {
               </Button>
               <Button
                 onClick={handleDeleteConfirm}
-                disabled={deletingId !== null}
+                disabled={deleteExercise.isPending}
                 className="bg-red-600 hover:bg-red-700 text-white cursor-pointer"
               >
-                {deletingId !== null ? 'Eliminando...' : 'Eliminar'}
+                {deleteExercise.isPending ? 'Eliminando...' : 'Eliminar'}
               </Button>
             </div>
           </div>

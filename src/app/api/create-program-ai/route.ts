@@ -45,19 +45,38 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // 3. Get available exercise IDs for validation
-    const { data: exercises, error: exercisesError } = await supabaseAdmin
-      .from('exercises')
-      .select('exercise_id')
-
-    if (exercisesError) {
-      return NextResponse.json(
-        { error: 'Failed to fetch exercises' },
-        { status: 500 }
-      )
+    // 3. Get available exercise IDs for validation from cached API
+    let availableExerciseIds: number[] = []
+    
+    try {
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+      const res = await fetch(`${baseUrl}/api/exercises?fields=validation`, {
+        next: { revalidate: 3600 }
+      })
+      
+      if (res.ok) {
+        const exercises = await res.json()
+        availableExerciseIds = exercises?.map((e: any) => e.exercise_id) || []
+      }
+    } catch (error) {
+      console.warn('API fetch failed, falling back to direct DB query')
     }
+    
+    // Fallback to direct DB query if API fails
+    if (availableExerciseIds.length === 0) {
+      const { data: exercises, error: exercisesError } = await supabaseAdmin
+        .from('exercises')
+        .select('exercise_id')
 
-    const availableExerciseIds = exercises?.map((e) => e.exercise_id) || []
+      if (exercisesError) {
+        return NextResponse.json(
+          { error: 'Failed to fetch exercises' },
+          { status: 500 }
+        )
+      }
+
+      availableExerciseIds = exercises?.map((e) => e.exercise_id) || []
+    }
 
     if (availableExerciseIds.length === 0) {
       return NextResponse.json(

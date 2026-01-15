@@ -10,18 +10,35 @@ const groq = new Groq({
 })
 
 /**
- * Fetches all available exercises from the database for the LLM to use.
+ * Fetches all available exercises from the cached API endpoint for the LLM to use.
+ * Uses the 'llm' field set which includes only fields needed for program generation.
  */
 async function fetchAvailableExercises() {
-  const { data, error } = await supabaseAdmin
-    .from('exercises')
-    .select('exercise_id, name, category, muscle_groups, difficulty_level, equipment_needed')
+  try {
+    // Use the cached API endpoint with 'llm' fields
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+    const res = await fetch(`${baseUrl}/api/exercises?fields=llm`, {
+      next: { revalidate: 3600 } // Cache for 1 hour
+    })
+    
+    if (!res.ok) {
+      throw new Error(`Failed to fetch exercises: ${res.statusText}`)
+    }
+    
+    return await res.json()
+  } catch (error: any) {
+    // Fallback to direct database query if API fails
+    console.warn('API fetch failed, falling back to direct DB query:', error.message)
+    const { data, error: dbError } = await supabaseAdmin
+      .from('exercises')
+      .select('exercise_id, name, category, muscle_groups, difficulty_level, equipment_needed')
 
-  if (error) {
-    throw new Error(`Failed to fetch exercises: ${error.message}`)
+    if (dbError) {
+      throw new Error(`Failed to fetch exercises: ${dbError.message}`)
+    }
+
+    return data || []
   }
-
-  return data || []
 }
 
 /**
