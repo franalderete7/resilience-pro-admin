@@ -83,9 +83,14 @@ export function useDeleteExercise() {
       
       logger.info('Exercise deleted successfully', { exerciseId })
     },
-    onSuccess: (_, exerciseId) => {
+    onSuccess: async (_, exerciseId) => {
       logger.debug('Invalidating exercises cache after delete', { exerciseId })
-      // Invalidate and refetch exercises list
+      
+      // Revalidate server-side cache
+      const { revalidateExercises } = await import('@/app/actions/revalidate')
+      await revalidateExercises()
+      
+      // Invalidate and refetch exercises list (client-side)
       queryClient.invalidateQueries({ queryKey: ['exercises'] })
     },
     onError: (error, exerciseId) => {
