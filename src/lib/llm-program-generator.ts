@@ -159,8 +159,27 @@ REGLAS CRÍTICAS:
     },
   })
 
-  const result = await model.generateContent(fullPrompt)
+  logger.debug('Calling Gemini API', { week: weekNumber, model: 'gemini-3-pro-preview' })
+  
+  let result
+  try {
+    result = await model.generateContent(fullPrompt)
+  } catch (apiError: any) {
+    logger.error('Gemini API call failed', {
+      week: weekNumber,
+      error: apiError.message,
+      status: apiError.status,
+      details: apiError.errorDetails,
+    })
+    throw new Error(`Gemini API error for week ${weekNumber}: ${apiError.message}`)
+  }
+  
   const response = await result.response
+  logger.debug('Gemini API response received', { 
+    week: weekNumber, 
+    finishReason: response.candidates?.[0]?.finishReason,
+    hasText: !!response.text()
+  })
   
   // Check if response was truncated
   const finishReason = response.candidates?.[0]?.finishReason
