@@ -83,18 +83,41 @@ export function useDeleteExercise() {
       
       logger.info('Exercise deleted successfully', { exerciseId })
     },
+    onMutate: async (exerciseId) => {
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ['exercises'] })
+      
+      // Snapshot previous value
+      const previousExercises = queryClient.getQueryData<ExerciseMinimal[]>(['exercises'])
+      
+      // Optimistically update UI (remove exercise immediately)
+      queryClient.setQueryData<ExerciseMinimal[]>(['exercises'], (old) => 
+        old?.filter(ex => ex.exercise_id !== exerciseId) ?? []
+      )
+      
+      logger.debug('Optimistically removed exercise from UI', { exerciseId })
+      
+      return { previousExercises }
+    },
     onSuccess: async (_, exerciseId) => {
-      logger.debug('Invalidating exercises cache after delete', { exerciseId })
+      logger.debug('Revalidating server-side cache after delete', { exerciseId })
       
       // Revalidate server-side cache
       const { revalidateExercises } = await import('@/app/actions/revalidate')
       await revalidateExercises()
       
-      // Invalidate and refetch exercises list (client-side)
-      queryClient.invalidateQueries({ queryKey: ['exercises'] })
+      // Force immediate refetch to ensure sync
+      await queryClient.refetchQueries({ queryKey: ['exercises'] })
+      
+      logger.debug('Delete completed successfully', { exerciseId })
     },
-    onError: (error, exerciseId) => {
-      logger.error('Delete exercise mutation failed', { exerciseId, error })
+    onError: (error, exerciseId, context) => {
+      logger.error('Delete exercise mutation failed, rolling back', { exerciseId, error })
+      
+      // Rollback optimistic update on error
+      if (context?.previousExercises) {
+        queryClient.setQueryData(['exercises'], context.previousExercises)
+      }
     },
   })
 }
