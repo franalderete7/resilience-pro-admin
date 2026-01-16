@@ -148,18 +148,15 @@ REGLAS CRÍTICAS:
   const fullPrompt = `${systemPrompt}\n\n${weekPrompt}`
   
   const model = genAI.getGenerativeModel({ 
-    model: 'gemini-3-pro-preview',
+    model: 'gemini-2.0-flash',
     generationConfig: {
-      // Gemini 3 works best with default temperature (1.0)
-      // Lower temperatures can cause looping or degraded performance
-      temperature: 1.0,
-      // Increased token limit to prevent truncation (Gemini 3 supports up to 64k output tokens)
+      temperature: 0.7,
       maxOutputTokens: 8000,
       responseMimeType: 'application/json',
     },
   })
 
-  logger.debug('Calling Gemini API', { week: weekNumber, model: 'gemini-3-pro-preview' })
+  logger.debug('Calling Gemini API', { week: weekNumber, model: 'gemini-2.0-flash' })
   
   let result
   try {
