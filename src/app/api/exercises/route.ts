@@ -6,13 +6,8 @@ import { logger } from '@/lib/logger'
 import type { Exercise, ExerciseMinimal, ExerciseLLM, ExerciseValidation } from '@/lib/types/exercise'
 
 // Force dynamic rendering (uses request headers for rate limiting)
+// No server-side caching - every request hits DB fresh
 export const dynamic = 'force-dynamic'
-
-// Cache for 1 hour (will be revalidated on-demand when exercises change)
-export const revalidate = 3600
-
-// Tag for on-demand revalidation
-export const tags = ['exercises']
 
 /**
  * GET /api/exercises
@@ -84,8 +79,8 @@ export async function GET(request: NextRequest) {
     // Return data directly (not wrapped) for backward compatibility
     const response = NextResponse.json(typedData)
     
-    // Add caching headers
-    response.headers.set('Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=86400')
+    // Set headers to prevent browser/CDN caching (since we use force-dynamic)
+    response.headers.set('Cache-Control', 'no-store, must-revalidate')
     response.headers.set('X-RateLimit-Remaining', String(remaining))
     
     return response

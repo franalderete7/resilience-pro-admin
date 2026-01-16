@@ -647,6 +647,9 @@ export function CreateExerciseAIModal({ open, onOpenChange, onSuccess }: CreateE
 
       logger.info('Exercise created successfully', { exerciseId: insertedExercise?.exercise_id })
       
+      // Small delay to ensure DB transaction is committed
+      await new Promise(resolve => setTimeout(resolve, 100))
+      
       // Optimistically add exercise to cache immediately
       if (insertedExercise) {
         queryClient.setQueryData<ExerciseMinimal[]>(['exercises'], (old = []) => {
@@ -660,12 +663,14 @@ export function CreateExerciseAIModal({ open, onOpenChange, onSuccess }: CreateE
         logger.debug('Optimistically added exercise to cache', { exerciseId: insertedExercise.exercise_id })
       }
       
-      // Revalidate server-side cache
+      // Revalidate server-side cache - MUST complete before closing modal
       const { revalidateExercises } = await import('@/app/actions/revalidate')
       await revalidateExercises()
+      logger.debug('Server-side cache revalidated')
       
-      // Invalidate client-side cache to refetch and ensure sync
-      queryClient.invalidateQueries({ queryKey: ['exercises'] })
+      // Force immediate refetch to ensure sync
+      await queryClient.refetchQueries({ queryKey: ['exercises'] })
+      logger.debug('Client-side cache refetched')
       
       resetForm()
       onSuccess()

@@ -468,6 +468,9 @@ export function CreateExerciseModal({ open, onOpenChange, onSuccess }: CreateExe
 
       if (insertError) throw insertError
 
+      // Small delay to ensure DB transaction is committed
+      await new Promise(resolve => setTimeout(resolve, 100))
+      
       // Optimistically add exercise to cache immediately
       if (insertedExercise) {
         queryClient.setQueryData<ExerciseMinimal[]>(['exercises'], (old = []) => {
@@ -480,12 +483,12 @@ export function CreateExerciseModal({ open, onOpenChange, onSuccess }: CreateExe
         })
       }
 
-      // Revalidate server-side cache
+      // Revalidate server-side cache - MUST complete before closing modal
       const { revalidateExercises } = await import('@/app/actions/revalidate')
       await revalidateExercises()
       
-      // Invalidate client-side cache to refetch and ensure sync
-      queryClient.invalidateQueries({ queryKey: ['exercises'] })
+      // Force immediate refetch to ensure sync
+      await queryClient.refetchQueries({ queryKey: ['exercises'] })
 
       resetForm()
       onSuccess()
