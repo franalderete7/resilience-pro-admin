@@ -5,6 +5,7 @@ import { buildSystemPrompt } from './prompts/program-generation'
 import { getActiveSystemPrompt } from './prompts/prompt-service'
 import { PROGRAM_CONFIG } from './constants/exercise-categories'
 import { env } from './config/env'
+import { logger } from './logger'
 
 const genAI = new GoogleGenerativeAI(env.GOOGLE_AI_API_KEY)
 
@@ -160,7 +161,9 @@ REGLAS:
   const model = genAI.getGenerativeModel({ 
     model: 'gemini-3-pro-preview',
     generationConfig: {
-      temperature: 0.5,
+      // Gemini 3 works best with default temperature (1.0)
+      // Lower temperatures can cause looping or degraded performance
+      temperature: 1.0,
       maxOutputTokens: 4000,
       responseMimeType: 'application/json',
     },
@@ -168,13 +171,44 @@ REGLAS:
 
   const result = await model.generateContent(fullPrompt)
   const response = await result.response
-  const responseText = response.text()
+  let responseText = response.text()
 
   if (!responseText) {
     throw new Error(`Empty response from LLM for week ${weekNumber}`)
   }
 
-  const parsed = JSON.parse(responseText)
+  // Extract JSON from markdown code blocks if present
+  const jsonMatch = responseText.match(/```(?:json)?\s*(\{[\s\S]*\})\s*```/) || 
+                    responseText.match(/(\{[\s\S]*\})/)
+  
+  if (jsonMatch) {
+    responseText = jsonMatch[1]
+  }
+
+  let parsed
+  try {
+    parsed = JSON.parse(responseText)
+  } catch (error: any) {
+    // Log the problematic JSON for debugging
+    const errorPosition = error.message.match(/position (\d+)/)?.[1]
+    const startPos = errorPosition ? Math.max(0, parseInt(errorPosition) - 200) : 0
+    const endPos = errorPosition ? Math.min(responseText.length, parseInt(errorPosition) + 200) : Math.min(responseText.length, 400)
+    const preview = responseText.substring(startPos, endPos)
+    
+    logger.error('JSON parse error from Gemini', {
+      week: weekNumber,
+      error: error.message,
+      responseLength: responseText.length,
+      preview: preview,
+      fullResponse: responseText.substring(0, 1000), // First 1000 chars
+    })
+    
+    throw new Error(
+      `Invalid JSON response from LLM for week ${weekNumber}: ${error.message}\n` +
+      `Response preview (around error position ${errorPosition}): ${preview}\n` +
+      `Full response length: ${responseText.length} chars`
+    )
+  }
   
   if (!parsed.workouts || !Array.isArray(parsed.workouts)) {
     throw new Error(`Invalid response format for week ${weekNumber}: missing workouts array`)
