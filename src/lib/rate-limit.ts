@@ -60,7 +60,7 @@ try {
     
     logger.info('Rate limiting initialized with Upstash Redis')
   } else {
-    logger.warn('Upstash Redis not configured, using in-memory rate limiting')
+    // Silent - in-memory fallback is fine for development
   }
 } catch (error) {
   logger.error('Failed to initialize rate limiting:', error)

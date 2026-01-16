@@ -5,6 +5,9 @@ import { successResponse, errorResponse, rateLimitErrorResponse, handleRouteErro
 import { logger } from '@/lib/logger'
 import type { Exercise, ExerciseMinimal, ExerciseLLM, ExerciseValidation } from '@/lib/types/exercise'
 
+// Force dynamic rendering (uses request headers for rate limiting)
+export const dynamic = 'force-dynamic'
+
 // Cache for 1 hour
 export const revalidate = 3600
 
