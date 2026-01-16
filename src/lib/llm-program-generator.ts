@@ -1,13 +1,12 @@
-import Groq from 'groq-sdk'
+import { GoogleGenerativeAI } from '@google/generative-ai'
 import { supabaseAdmin } from './supabase-admin'
 import type { LLMProgramResponse, UserData, ProgramRequirements } from './types/program'
 import { buildSystemPrompt } from './prompts/program-generation'
 import { getActiveSystemPrompt } from './prompts/prompt-service'
 import { PROGRAM_CONFIG } from './constants/exercise-categories'
+import { env } from './config/env'
 
-const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY,
-})
+const genAI = new GoogleGenerativeAI(env.GOOGLE_AI_API_KEY)
 
 /**
  * Fetches all available exercises from the cached API endpoint for the LLM to use.
@@ -155,18 +154,21 @@ REGLAS:
 3. weight_level solo acepta: no_weight, light, medium, heavy
 4. RESPONDE SOLO CON EL JSON, nada más`
 
-  const completion = await groq.chat.completions.create({
-    messages: [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: weekPrompt },
-    ],
-    model: 'meta-llama/llama-4-scout-17b-16e-instruct',
-    temperature: 0.5,
-    max_tokens: 4000,
-    response_format: { type: 'json_object' },
+  // Combine system and user prompts for Google AI (it doesn't have separate system messages)
+  const fullPrompt = `${systemPrompt}\n\n${weekPrompt}`
+  
+  const model = genAI.getGenerativeModel({ 
+    model: 'gemini-3-pro-preview',
+    generationConfig: {
+      temperature: 0.5,
+      maxOutputTokens: 4000,
+      responseMimeType: 'application/json',
+    },
   })
 
-  const responseText = completion.choices[0]?.message?.content
+  const result = await model.generateContent(fullPrompt)
+  const response = await result.response
+  const responseText = response.text()
 
   if (!responseText) {
     throw new Error(`Empty response from LLM for week ${weekNumber}`)

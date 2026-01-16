@@ -2,7 +2,6 @@
 
 import { authenticateRequest } from '@/lib/auth'
 import { getActiveSystemPrompt, createPromptVersion, getPromptHistory, setActiveVersion, PromptVersion } from '@/lib/prompts/prompt-service'
-import { auditSystemPrompt, askSystemPrompt } from '@/lib/prompts/prompt-auditor'
 import { revalidatePath } from 'next/cache'
 import { cookies } from 'next/headers'
 import { createClient } from '@supabase/supabase-js'
@@ -48,24 +47,6 @@ export async function fetchActivePrompt() {
 
 export async function fetchPromptHistory() {
   return await getPromptHistory()
-}
-
-export async function analyzePromptModules(
-  methodology: string,
-  rules: string,
-  categories: string
-) {
-  return await auditSystemPrompt(methodology, rules, categories)
-}
-
-export async function askPromptAI(
-  question: string,
-  methodology: string,
-  rules: string,
-  categories: string,
-  structure: string
-) {
-  return await askSystemPrompt(question, methodology, rules, categories, structure)
 }
 
 export async function saveNewPromptVersion(data: {
