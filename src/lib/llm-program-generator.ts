@@ -112,7 +112,7 @@ ESTRUCTURA DE BLOQUES (6 bloques por workout):
 5. Bloque 3 (main): 2 ejercicios unilaterales de hip-dominant/knee-dominant/pushes/pulls, sets según objetivo
 6. Bloque 4 (main): 2-3 ejercicios de accessories/ankle-dominant, 2-3 sets
 
-RESPONDE SOLO CON JSON:
+RESPONDE SOLO CON JSON (SOLO el objeto workouts, SIN program ni otros campos):
 {
   "workouts": [
     {
@@ -149,11 +149,12 @@ RESPONDE SOLO CON JSON:
   ]
 }
 
-REGLAS:
+REGLAS CRÍTICAS:
 1. USA SOLO exercise_id de la lista (NO inventes IDs)
 2. Cada workout DEBE tener EXACTAMENTE 6 bloques en el orden especificado
 3. weight_level solo acepta: no_weight, light, medium, heavy
-4. RESPONDE SOLO CON EL JSON, nada más`
+4. RESPONDE SOLO CON {"workouts": [...]} - NO incluyas "program" ni otros campos
+5. COMPLETA TODOS los workouts y bloques - NO trunques la respuesta`
 
   // Combine system and user prompts for Google AI (it doesn't have separate system messages)
   const fullPrompt = `${systemPrompt}\n\n${weekPrompt}`
@@ -164,17 +165,37 @@ REGLAS:
       // Gemini 3 works best with default temperature (1.0)
       // Lower temperatures can cause looping or degraded performance
       temperature: 1.0,
-      maxOutputTokens: 4000,
+      // Increased token limit to prevent truncation (Gemini 3 supports up to 64k output tokens)
+      maxOutputTokens: 8000,
       responseMimeType: 'application/json',
     },
   })
 
   const result = await model.generateContent(fullPrompt)
   const response = await result.response
+  
+  // Check if response was truncated
+  const finishReason = response.candidates?.[0]?.finishReason
+  if (finishReason === 'MAX_TOKENS') {
+    logger.warn('Response truncated due to token limit', { week: weekNumber })
+    throw new Error(`Response truncated for week ${weekNumber}. Try increasing maxOutputTokens or simplifying the prompt.`)
+  }
+  
   let responseText = response.text()
 
   if (!responseText) {
     throw new Error(`Empty response from LLM for week ${weekNumber}`)
+  }
+  
+  // Check if JSON appears incomplete (doesn't end with closing braces)
+  const trimmedText = responseText.trim()
+  if (!trimmedText.endsWith('}') && !trimmedText.endsWith(']')) {
+    logger.warn('Response appears incomplete', { 
+      week: weekNumber, 
+      responseLength: responseText.length,
+      lastChars: trimmedText.slice(-50)
+    })
+    throw new Error(`Incomplete JSON response for week ${weekNumber}. Response may have been truncated.`)
   }
 
   // Extract JSON from markdown code blocks if present
@@ -188,6 +209,12 @@ REGLAS:
   let parsed
   try {
     parsed = JSON.parse(responseText)
+    
+    // If response includes extra fields (like "program"), extract just workouts
+    if (parsed.program && parsed.workouts) {
+      logger.warn('Response included extra "program" field, extracting workouts only', { week: weekNumber })
+      parsed = { workouts: parsed.workouts }
+    }
   } catch (error: any) {
     // Log the problematic JSON for debugging
     const errorPosition = error.message.match(/position (\d+)/)?.[1]
