@@ -80,7 +80,8 @@ export function ExerciseList() {
   }
 
   const handleCreateSuccess = () => {
-    // React Query will automatically refetch
+    // Force immediate refetch to show new exercise
+    refetch()
   }
 
   const handleDeleteClick = (e: React.MouseEvent, exercise: ExerciseMinimal) => {

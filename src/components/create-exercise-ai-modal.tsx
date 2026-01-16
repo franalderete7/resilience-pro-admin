@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/contexts/auth-context'
 import { supabase } from '@/lib/supabase'
 import { logger } from '@/lib/logger'
@@ -34,6 +35,7 @@ interface CreateExerciseAIModalProps {
 
 export function CreateExerciseAIModal({ open, onOpenChange, onSuccess }: CreateExerciseAIModalProps) {
   const { adminUser } = useAuth()
+  const queryClient = useQueryClient()
   const [loading, setLoading] = useState(false)
   const [analyzing, setAnalyzing] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -640,9 +642,12 @@ export function CreateExerciseAIModal({ open, onOpenChange, onSuccess }: CreateE
 
       logger.info('Exercise created successfully')
       
-      // Revalidate exercises cache
+      // Revalidate server-side cache
       const { revalidateExercises } = await import('@/app/actions/revalidate')
       await revalidateExercises()
+      
+      // Invalidate client-side cache to force refetch
+      await queryClient.invalidateQueries({ queryKey: ['exercises'] })
       
       resetForm()
       onSuccess()

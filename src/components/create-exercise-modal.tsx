@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { FFmpeg } from '@ffmpeg/ffmpeg'
 import { fetchFile, toBlobURL } from '@ffmpeg/util'
 import { useAuth } from '@/contexts/auth-context'
@@ -32,6 +33,7 @@ interface CreateExerciseModalProps {
 
 export function CreateExerciseModal({ open, onOpenChange, onSuccess }: CreateExerciseModalProps) {
   const { adminUser } = useAuth()
+  const queryClient = useQueryClient()
   const [loading, setLoading] = useState(false)
   const [compressing, setCompressing] = useState(false)
   const [compressionProgress, setCompressionProgress] = useState(0)
@@ -461,9 +463,12 @@ export function CreateExerciseModal({ open, onOpenChange, onSuccess }: CreateExe
 
       if (insertError) throw insertError
 
-      // Revalidate exercises cache
+      // Revalidate server-side cache
       const { revalidateExercises } = await import('@/app/actions/revalidate')
       await revalidateExercises()
+      
+      // Invalidate client-side cache to force refetch
+      await queryClient.invalidateQueries({ queryKey: ['exercises'] })
 
       resetForm()
       onSuccess()

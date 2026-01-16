@@ -82,6 +82,7 @@ export function useDeleteExercise() {
       }
       
       logger.info('Exercise deleted successfully', { exerciseId })
+      return exerciseId
     },
     onMutate: async (exerciseId) => {
       // Cancel outgoing refetches
@@ -99,17 +100,18 @@ export function useDeleteExercise() {
       
       return { previousExercises }
     },
-    onSuccess: async (_, exerciseId) => {
-      logger.debug('Revalidating server-side cache after delete', { exerciseId })
+    onSettled: async (_, error, exerciseId) => {
+      // Always revalidate caches after mutation settles (success or error)
+      if (!error) {
+        logger.debug('Revalidating caches after delete', { exerciseId })
+        
+        // Revalidate server-side cache
+        const { revalidateExercises } = await import('@/app/actions/revalidate')
+        await revalidateExercises()
+      }
       
-      // Revalidate server-side cache
-      const { revalidateExercises } = await import('@/app/actions/revalidate')
-      await revalidateExercises()
-      
-      // Force immediate refetch to ensure sync
-      await queryClient.refetchQueries({ queryKey: ['exercises'] })
-      
-      logger.debug('Delete completed successfully', { exerciseId })
+      // Always invalidate to ensure fresh data
+      queryClient.invalidateQueries({ queryKey: ['exercises'] })
     },
     onError: (error, exerciseId, context) => {
       logger.error('Delete exercise mutation failed, rolling back', { exerciseId, error })
