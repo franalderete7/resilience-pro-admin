@@ -105,10 +105,13 @@ RESPONDE SOLO CON JSON (SOLO el objeto workouts, SIN program ni otros campos):
   "workouts": [
     {
       "name": "Día ${workoutOrderStart}",
+      "description": "Descripción breve del enfoque del workout (ej: 'Potencia explosiva y fuerza de tracción')",
       "week_number": ${weekNumber},
       "workout_order": ${workoutOrderStart},
       "day_of_week": 1,
       "estimated_duration_minutes": 60,
+      "difficulty_level": "${userData.fitness_level}",
+      "workout_type": "strength",
       "blocks": [
         {"name": "Activación 1", "block_type": "warmup", "sets": 2, "rest_between_exercises": 30, "exercises": [{"exercise_id": 123, "reps": 10, "exercise_order": 1, "weight_level": "no_weight"}]},
         {"name": "Activación 2", "block_type": "warmup", "sets": 2, "rest_between_exercises": 30, "exercises": [...]},
@@ -120,18 +123,24 @@ RESPONDE SOLO CON JSON (SOLO el objeto workouts, SIN program ni otros campos):
     },
     {
       "name": "Día ${workoutOrderStart + 1}",
+      "description": "Descripción breve del enfoque del workout",
       "week_number": ${weekNumber},
       "workout_order": ${workoutOrderStart + 1},
       "day_of_week": 3,
       "estimated_duration_minutes": 60,
+      "difficulty_level": "${userData.fitness_level}",
+      "workout_type": "strength",
       "blocks": [...]
     },
     {
       "name": "Día ${workoutOrderEnd}",
+      "description": "Descripción breve del enfoque del workout",
       "week_number": ${weekNumber},
       "workout_order": ${workoutOrderEnd},
       "day_of_week": 5,
       "estimated_duration_minutes": 60,
+      "difficulty_level": "${userData.fitness_level}",
+      "workout_type": "strength",
       "blocks": [...]
     }
   ]
@@ -142,7 +151,8 @@ REGLAS CRÍTICAS:
 2. Cada workout DEBE tener EXACTAMENTE 6 bloques en el orden especificado
 3. weight_level solo acepta: no_weight, light, medium, heavy
 4. RESPONDE SOLO CON {"workouts": [...]} - NO incluyas "program" ni otros campos
-5. COMPLETA TODOS los workouts y bloques - NO trunques la respuesta`
+5. COMPLETA TODOS los workouts y bloques - NO trunques la respuesta
+6. Cada workout DEBE incluir "description" con el enfoque específico del día (10-20 palabras)`
 
   // Combine system and user prompts for Google AI (it doesn't have separate system messages)
   const fullPrompt = `${systemPrompt}\n\n${weekPrompt}`
