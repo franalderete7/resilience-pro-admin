@@ -26,6 +26,7 @@ import { Sparkles, Loader2 } from 'lucide-react'
 import { FFmpeg } from '@ffmpeg/ffmpeg'
 import { fetchFile, toBlobURL } from '@ffmpeg/util'
 import { EXERCISE_CATEGORIES, DIFFICULTY_LEVELS } from '@/lib/constants/exercise-categories'
+import type { ExerciseMinimal } from '@/lib/types/exercise'
 
 interface CreateExerciseAIModalProps {
   open: boolean
@@ -617,17 +618,21 @@ export function CreateExerciseAIModal({ open, onOpenChange, onSuccess }: CreateE
 
       // Create exercise record
       logger.debug('Creating exercise record in DB')
-      const { error: insertError } = await supabase.from('exercises').insert({
-        name: formData.name.trim(),
-        description: formData.description?.trim() || null,
-        video_url: videoUrl,
-        image_url: imageUrl,
-        category: primaryCategory,
-        muscle_groups: muscleGroups.length > 0 ? muscleGroups : null,
-        equipment_needed: equipmentNeeded.length > 0 ? equipmentNeeded : null,
-        difficulty_level: formData.difficulty_level || null,
-        created_by: adminUser?.id,
-      })
+      const { data: insertedExercise, error: insertError } = await supabase
+        .from('exercises')
+        .insert({
+          name: formData.name.trim(),
+          description: formData.description?.trim() || null,
+          video_url: videoUrl,
+          image_url: imageUrl,
+          category: primaryCategory,
+          muscle_groups: muscleGroups.length > 0 ? muscleGroups : null,
+          equipment_needed: equipmentNeeded.length > 0 ? equipmentNeeded : null,
+          difficulty_level: formData.difficulty_level || null,
+          created_by: adminUser?.id,
+        })
+        .select('exercise_id, name, category, difficulty_level, image_url')
+        .single()
 
       if (insertError) {
         logger.error('Database insert error', insertError)
@@ -640,14 +645,27 @@ export function CreateExerciseAIModal({ open, onOpenChange, onSuccess }: CreateE
         }
       }
 
-      logger.info('Exercise created successfully')
+      logger.info('Exercise created successfully', { exerciseId: insertedExercise?.exercise_id })
+      
+      // Optimistically add exercise to cache immediately
+      if (insertedExercise) {
+        queryClient.setQueryData<ExerciseMinimal[]>(['exercises'], (old = []) => {
+          // Check if already exists (shouldn't, but safety check)
+          if (old.some(ex => ex.exercise_id === insertedExercise.exercise_id)) {
+            return old
+          }
+          // Add new exercise at the beginning (most recent first)
+          return [insertedExercise, ...old]
+        })
+        logger.debug('Optimistically added exercise to cache', { exerciseId: insertedExercise.exercise_id })
+      }
       
       // Revalidate server-side cache
       const { revalidateExercises } = await import('@/app/actions/revalidate')
       await revalidateExercises()
       
-      // Invalidate client-side cache to force refetch
-      await queryClient.invalidateQueries({ queryKey: ['exercises'] })
+      // Invalidate client-side cache to refetch and ensure sync
+      queryClient.invalidateQueries({ queryKey: ['exercises'] })
       
       resetForm()
       onSuccess()

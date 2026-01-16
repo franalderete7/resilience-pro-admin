@@ -24,6 +24,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { EXERCISE_CATEGORIES, DIFFICULTY_LEVELS } from '@/lib/constants/exercise-categories'
+import type { ExerciseMinimal } from '@/lib/types/exercise'
 
 interface CreateExerciseModalProps {
   open: boolean
@@ -449,26 +450,42 @@ export function CreateExerciseModal({ open, onOpenChange, onSuccess }: CreateExe
         .filter((e) => e.length > 0)
 
       // Create exercise record
-      const { error: insertError } = await supabase.from('exercises').insert({
-        name: formData.name,
-        description: formData.description || null,
-        video_url: videoUrl,
-        image_url: imageUrl,
-        category: formData.category || null,
-        muscle_groups: muscleGroups.length > 0 ? muscleGroups : null,
-        equipment_needed: equipmentNeeded.length > 0 ? equipmentNeeded : null,
-        difficulty_level: formData.difficulty_level || null,
-        created_by: adminUser?.id,
-      })
+      const { data: insertedExercise, error: insertError } = await supabase
+        .from('exercises')
+        .insert({
+          name: formData.name,
+          description: formData.description || null,
+          video_url: videoUrl,
+          image_url: imageUrl,
+          category: formData.category || null,
+          muscle_groups: muscleGroups.length > 0 ? muscleGroups : null,
+          equipment_needed: equipmentNeeded.length > 0 ? equipmentNeeded : null,
+          difficulty_level: formData.difficulty_level || null,
+          created_by: adminUser?.id,
+        })
+        .select('exercise_id, name, category, difficulty_level, image_url')
+        .single()
 
       if (insertError) throw insertError
+
+      // Optimistically add exercise to cache immediately
+      if (insertedExercise) {
+        queryClient.setQueryData<ExerciseMinimal[]>(['exercises'], (old = []) => {
+          // Check if already exists (shouldn't, but safety check)
+          if (old.some(ex => ex.exercise_id === insertedExercise.exercise_id)) {
+            return old
+          }
+          // Add new exercise at the beginning (most recent first)
+          return [insertedExercise, ...old]
+        })
+      }
 
       // Revalidate server-side cache
       const { revalidateExercises } = await import('@/app/actions/revalidate')
       await revalidateExercises()
       
-      // Invalidate client-side cache to force refetch
-      await queryClient.invalidateQueries({ queryKey: ['exercises'] })
+      // Invalidate client-side cache to refetch and ensure sync
+      queryClient.invalidateQueries({ queryKey: ['exercises'] })
 
       resetForm()
       onSuccess()
