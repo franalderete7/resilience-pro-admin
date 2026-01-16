@@ -461,6 +461,10 @@ export function CreateExerciseModal({ open, onOpenChange, onSuccess }: CreateExe
 
       if (insertError) throw insertError
 
+      // Revalidate exercises cache
+      const { revalidateExercises } = await import('@/app/actions/revalidate')
+      await revalidateExercises()
+
       resetForm()
       onSuccess()
       onOpenChange(false)

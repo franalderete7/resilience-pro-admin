@@ -8,8 +8,11 @@ import type { Exercise, ExerciseMinimal, ExerciseLLM, ExerciseValidation } from 
 // Force dynamic rendering (uses request headers for rate limiting)
 export const dynamic = 'force-dynamic'
 
-// Cache for 1 hour
+// Cache for 1 hour (will be revalidated on-demand when exercises change)
 export const revalidate = 3600
+
+// Tag for on-demand revalidation
+export const tags = ['exercises']
 
 /**
  * GET /api/exercises

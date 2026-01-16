@@ -639,6 +639,11 @@ export function CreateExerciseAIModal({ open, onOpenChange, onSuccess }: CreateE
       }
 
       logger.info('Exercise created successfully')
+      
+      // Revalidate exercises cache
+      const { revalidateExercises } = await import('@/app/actions/revalidate')
+      await revalidateExercises()
+      
       resetForm()
       onSuccess()
       onOpenChange(false)
