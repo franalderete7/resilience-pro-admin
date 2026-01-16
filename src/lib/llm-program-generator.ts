@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI } from '@google/generative-ai'
+import Groq from 'groq-sdk'
 import { supabaseAdmin } from './supabase-admin'
 import type { LLMProgramResponse, UserData, ProgramRequirements } from './types/program'
 import { buildSystemPrompt } from './prompts/program-generation'
@@ -7,7 +7,9 @@ import { PROGRAM_CONFIG } from './constants/exercise-categories'
 import { env } from './config/env'
 import { logger } from './logger'
 
-const genAI = new GoogleGenerativeAI(env.GOOGLE_AI_API_KEY)
+const groq = new Groq({
+  apiKey: env.GROQ_API_KEY,
+})
 
 /**
  * Fetches all available exercises directly from the database for the LLM to use.
@@ -154,48 +156,50 @@ REGLAS CRÍTICAS:
 5. COMPLETA TODOS los workouts y bloques - NO trunques la respuesta
 6. Cada workout DEBE incluir "description" con el enfoque específico del día (10-20 palabras)`
 
-  // Combine system and user prompts for Google AI (it doesn't have separate system messages)
-  const fullPrompt = `${systemPrompt}\n\n${weekPrompt}`
+  // Groq uses separate system and user messages
+  logger.debug('Calling Groq API', { week: weekNumber, model: 'llama-3.3-70b-versatile' })
   
-  const model = genAI.getGenerativeModel({ 
-    model: 'gemini-2.0-flash',
-    generationConfig: {
-      temperature: 0.7,
-      maxOutputTokens: 8000,
-      responseMimeType: 'application/json',
-    },
-  })
-
-  logger.debug('Calling Gemini API', { week: weekNumber, model: 'gemini-2.0-flash' })
-  
-  let result
+  let completion
   try {
-    result = await model.generateContent(fullPrompt)
+    completion = await groq.chat.completions.create({
+      messages: [
+        {
+          role: 'system',
+          content: systemPrompt,
+        },
+        {
+          role: 'user',
+          content: weekPrompt,
+        },
+      ],
+      model: 'llama-3.3-70b-versatile',
+      temperature: 0.7,
+      max_tokens: 8000,
+      response_format: { type: 'json_object' },
+    })
   } catch (apiError: any) {
-    logger.error('Gemini API call failed', {
+    logger.error('Groq API call failed', {
       week: weekNumber,
       error: apiError.message,
       status: apiError.status,
-      details: apiError.errorDetails,
     })
-    throw new Error(`Gemini API error for week ${weekNumber}: ${apiError.message}`)
+    throw new Error(`Groq API error for week ${weekNumber}: ${apiError.message}`)
   }
   
-  const response = await result.response
-  logger.debug('Gemini API response received', { 
-    week: weekNumber, 
-    finishReason: response.candidates?.[0]?.finishReason,
-    hasText: !!response.text()
+  logger.debug('Groq API response received', { 
+    week: weekNumber,
+    finishReason: completion.choices[0]?.finish_reason,
+    hasContent: !!completion.choices[0]?.message?.content
   })
   
   // Check if response was truncated
-  const finishReason = response.candidates?.[0]?.finishReason
-  if (finishReason === 'MAX_TOKENS') {
+  const finishReason = completion.choices[0]?.finish_reason
+  if (finishReason === 'length') {
     logger.warn('Response truncated due to token limit', { week: weekNumber })
-    throw new Error(`Response truncated for week ${weekNumber}. Try increasing maxOutputTokens or simplifying the prompt.`)
+    throw new Error(`Response truncated for week ${weekNumber}. Try increasing max_tokens or simplifying the prompt.`)
   }
   
-  let responseText = response.text()
+  let responseText = completion.choices[0]?.message?.content
 
   if (!responseText) {
     throw new Error(`Empty response from LLM for week ${weekNumber}`)
@@ -236,7 +240,7 @@ REGLAS CRÍTICAS:
     const endPos = errorPosition ? Math.min(responseText.length, parseInt(errorPosition) + 200) : Math.min(responseText.length, 400)
     const preview = responseText.substring(startPos, endPos)
     
-    logger.error('JSON parse error from Gemini', {
+    logger.error('JSON parse error from Groq', {
       week: weekNumber,
       error: error.message,
       responseLength: responseText.length,

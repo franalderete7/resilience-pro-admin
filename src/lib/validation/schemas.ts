@@ -59,8 +59,8 @@ export const envSchema = z.object({
   SUPABASE_URL: z.string().url('Invalid Supabase URL'),
   SUPABASE_ANON_KEY: z.string().min(1, 'Supabase anon key is required'),
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1, 'Supabase service role key is required'),
-  GROQ_API_KEY: z.string().min(1, 'Groq API key is required'), // Still used for analyze-exercise
-  GOOGLE_AI_API_KEY: z.string().min(1, 'Google AI API key is required'),
+  GROQ_API_KEY: z.string().min(1, 'Groq API key is required'), // Used for program generation and analyze-exercise
+  GOOGLE_AI_API_KEY: z.string().optional(), // No longer required (was used for program generation)
   NEXT_PUBLIC_APP_URL: z.string().url('Invalid app URL').optional(),
   UPSTASH_REDIS_REST_URL: z.string().url('Invalid Upstash URL').optional(),
   UPSTASH_REDIS_REST_TOKEN: z.string().optional(),
