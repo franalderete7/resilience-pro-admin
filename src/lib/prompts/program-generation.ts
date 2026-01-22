@@ -1,16 +1,19 @@
 /**
  * System prompts for LLM-based program generation.
  * 
- * This file contains the system prompt builder used to guide the AI in creating
- * personalized training programs following the Resilience Pro methodology.
+ * DEPRECATED: This file is kept for backwards compatibility.
+ * New code should use:
+ * - src/lib/prompts/base-prompt.ts - Base universal rules
+ * - src/lib/prompts/goal-prompts/* - Goal-specific prompts
+ * - src/lib/prompts/prompt-builder.ts - Combines base + goal prompts
  * 
- * NOTE: The actual prompt content is stored in the database (prompt_versions table)
- * and fetched via getActiveSystemPrompt(). The defaults here are minimal fallbacks.
+ * The prompt system now works as follows:
+ * 1. Base prompt contains universal rules (4 weeks, 3 workouts, JSON format, etc.)
+ * 2. Goal-specific prompts contain specialized training rules for each objective
+ * 3. The prompt builder combines them based on user's primary goal
  */
 
-/**
- * Default fallbacks (empty - forces reliance on database prompts)
- */
+// Legacy exports for backwards compatibility
 export const DEFAULT_METHODOLOGY = ``
 export const DEFAULT_RULES = ``
 export const DEFAULT_CATEGORIES = ``
@@ -24,28 +27,9 @@ export interface SystemPromptModules {
 }
 
 /**
- * Builds the complete system prompt for program generation.
- * Accepts modules from the database to override defaults.
- * 
- * The modules contain:
- * - methodology: Training methodology and block structure
- * - rules: Planning rules by objective and level
- * - categories: Exercise category descriptions
- * - structure: JSON format and validation rules
+ * @deprecated Use buildProgramPrompt from prompt-builder.ts instead
  */
 export function buildSystemPrompt(modules: SystemPromptModules = {}): string {
-  const methodology = modules.methodology || DEFAULT_METHODOLOGY;
-  const categories = modules.categories || DEFAULT_CATEGORIES;
-  const rules = modules.rules || DEFAULT_RULES;
-  const structure = modules.structure || DEFAULT_STRUCTURE;
-
-  return `Eres un entrenador personal certificado de Resilience Pro. Diseñas programas de entrenamiento personalizados siguiendo la metodología Resilience Pro.
-
-${methodology}
-
-${rules}
-
-${categories}
-
-${structure}`.trim()
+  console.warn('buildSystemPrompt is deprecated. Use buildProgramPrompt from prompt-builder.ts')
+  return ''
 }

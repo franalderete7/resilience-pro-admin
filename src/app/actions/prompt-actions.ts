@@ -1,7 +1,7 @@
 'use server'
 
-import { authenticateRequest } from '@/lib/auth'
-import { getActiveSystemPrompt, createPromptVersion, getPromptHistory, setActiveVersion, PromptVersion } from '@/lib/prompts/prompt-service'
+import { getActiveGoalPrompts, createPromptVersion, getPromptHistory, setActiveVersion, PromptVersion } from '@/lib/prompts/prompt-service'
+import { DEFAULT_GOAL_PROMPTS, GOAL_METADATA, type ProgramGoal } from '@/lib/prompts/goal-prompts'
 import { revalidatePath } from 'next/cache'
 import { cookies } from 'next/headers'
 import { createClient } from '@supabase/supabase-js'
@@ -21,7 +21,6 @@ async function getAuthenticatedUser() {
       },
       global: {
         headers: {
-          // Pass the cookie header for authentication
           cookie: cookieStore.toString(),
         },
       },
@@ -41,27 +40,53 @@ async function getAuthenticatedUser() {
   }
 }
 
+/**
+ * Fetch active goal prompts for the UI
+ */
 export async function fetchActivePrompt() {
-  return await getActiveSystemPrompt()
+  const prompts = await getActiveGoalPrompts()
+  return {
+    musclePower: prompts.musclePower,
+    muscleMass: prompts.muscleMass,
+    speed: prompts.speed,
+    maintenance: prompts.maintenance
+  }
+}
+
+/**
+ * Get goal metadata for UI labels
+ */
+export async function fetchGoalMetadata() {
+  return GOAL_METADATA
+}
+
+/**
+ * Get default prompts for reset functionality
+ */
+export async function fetchDefaultPrompts() {
+  return DEFAULT_GOAL_PROMPTS
 }
 
 export async function fetchPromptHistory() {
   return await getPromptHistory()
 }
 
+/**
+ * Save new goal prompts version
+ */
 export async function saveNewPromptVersion(data: {
   label: string
-  methodology: string
-  categories: string
-  rules: string
-  structure: string
+  musclePower: string
+  muscleMass: string
+  speed: string
+  maintenance: string
   isActive: boolean
 }) {
   try {
     const user = await getAuthenticatedUser()
     const userId = user?.id || null 
     
-    await createPromptVersion(userId as any, data)
+    await createPromptVersion(userId, data)
 
     revalidatePath('/')
     return { success: true }

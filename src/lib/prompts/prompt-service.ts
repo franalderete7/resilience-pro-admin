@@ -1,23 +1,33 @@
 import { supabaseAdmin } from '../supabase-admin'
-import { SystemPromptModules, DEFAULT_METHODOLOGY, DEFAULT_RULES, DEFAULT_CATEGORIES, DEFAULT_STRUCTURE } from './program-generation'
+import { 
+  DEFAULT_GOAL_PROMPTS,
+  type ProgramGoal 
+} from './goal-prompts'
+import { type GoalPromptModules } from './prompt-builder'
 
 export interface PromptVersion {
   id: string
   created_at: string
   is_active: boolean
   version_label: string | null
-  methodology_content: string
-  categories_content: string
-  rules_content: string
-  structure_content: string | null
+  // Goal-specific prompts
+  muscle_power_content: string | null
+  muscle_mass_content: string | null
+  speed_content: string | null
+  maintenance_content: string | null
+  // Legacy fields (for backwards compatibility during migration)
+  methodology_content?: string
+  categories_content?: string
+  rules_content?: string
+  structure_content?: string | null
   updated_by: string | null
 }
 
 /**
- * Fetches the currently active system prompt configuration.
- * If no active version is found, returns the default hardcoded values.
+ * Fetches the currently active goal prompts configuration.
+ * Returns custom prompts from database or defaults if not found.
  */
-export async function getActiveSystemPrompt(): Promise<SystemPromptModules> {
+export async function getActiveGoalPrompts(): Promise<GoalPromptModules> {
   try {
     const { data, error } = await supabaseAdmin
       .from('prompt_versions')
@@ -28,51 +38,55 @@ export async function getActiveSystemPrompt(): Promise<SystemPromptModules> {
       .single()
 
     if (error || !data) {
-      // If table doesn't exist or no active prompt, return defaults
-      // We log but don't throw, to fail gracefully to defaults
-      if (error && error.code !== 'PGRST116') { // PGRST116 is "Row not found"
-        console.warn('Error fetching active prompt:', error)
+      if (error && error.code !== 'PGRST116') {
+        console.warn('Error fetching active prompts:', error)
       }
+      // Return defaults
       return {
-        methodology: DEFAULT_METHODOLOGY,
-        categories: DEFAULT_CATEGORIES,
-        rules: DEFAULT_RULES,
-        structure: DEFAULT_STRUCTURE
+        musclePower: DEFAULT_GOAL_PROMPTS.improve_muscle_power,
+        muscleMass: DEFAULT_GOAL_PROMPTS.increase_muscle_mass,
+        speed: DEFAULT_GOAL_PROMPTS.improve_speed,
+        maintenance: DEFAULT_GOAL_PROMPTS.maintenance
       }
     }
 
     return {
-      methodology: data.methodology_content,
-      categories: data.categories_content,
-      rules: data.rules_content,
-      structure: data.structure_content || DEFAULT_STRUCTURE
+      musclePower: data.muscle_power_content || DEFAULT_GOAL_PROMPTS.improve_muscle_power,
+      muscleMass: data.muscle_mass_content || DEFAULT_GOAL_PROMPTS.increase_muscle_mass,
+      speed: data.speed_content || DEFAULT_GOAL_PROMPTS.improve_speed,
+      maintenance: data.maintenance_content || DEFAULT_GOAL_PROMPTS.maintenance
     }
   } catch (err) {
-    console.error('Unexpected error fetching active prompt:', err)
+    console.error('Unexpected error fetching active prompts:', err)
     return {
-      methodology: DEFAULT_METHODOLOGY,
-      categories: DEFAULT_CATEGORIES,
-      rules: DEFAULT_RULES,
-      structure: DEFAULT_STRUCTURE
+      musclePower: DEFAULT_GOAL_PROMPTS.improve_muscle_power,
+      muscleMass: DEFAULT_GOAL_PROMPTS.increase_muscle_mass,
+      speed: DEFAULT_GOAL_PROMPTS.improve_speed,
+      maintenance: DEFAULT_GOAL_PROMPTS.maintenance
     }
   }
 }
 
+// Legacy function for backwards compatibility
+export async function getActiveSystemPrompt(): Promise<GoalPromptModules> {
+  return getActiveGoalPrompts()
+}
+
 /**
- * Creates a new version of the system prompt.
+ * Creates a new version of the goal prompts.
  */
 export async function createPromptVersion(
-  userId: string,
+  userId: string | null,
   content: {
     label: string
-    methodology: string
-    categories: string
-    rules: string
-    structure: string
+    musclePower: string
+    muscleMass: string
+    speed: string
+    maintenance: string
     isActive: boolean
   }
 ) {
-  // If setting to active, first deactivate others (though we could just order by date)
+  // If setting to active, first deactivate others
   if (content.isActive) {
     await supabaseAdmin
       .from('prompt_versions')
@@ -84,10 +98,10 @@ export async function createPromptVersion(
     .from('prompt_versions')
     .insert({
       version_label: content.label,
-      methodology_content: content.methodology,
-      categories_content: content.categories,
-      rules_content: content.rules,
-      structure_content: content.structure,
+      muscle_power_content: content.musclePower,
+      muscle_mass_content: content.muscleMass,
+      speed_content: content.speed,
+      maintenance_content: content.maintenance,
       is_active: content.isActive,
       updated_by: userId
     })

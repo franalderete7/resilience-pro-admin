@@ -1,8 +1,9 @@
 import Groq from 'groq-sdk'
 import { supabaseAdmin } from './supabase-admin'
 import type { LLMProgramResponse, UserData, ProgramRequirements } from './types/program'
-import { buildSystemPrompt } from './prompts/program-generation'
-import { getActiveSystemPrompt } from './prompts/prompt-service'
+import { buildProgramPrompt, getPrimaryGoalLabel } from './prompts/prompt-builder'
+import { getActiveGoalPrompts } from './prompts/prompt-service'
+import { mapUserGoalsToProgramGoal, GOAL_METADATA } from './prompts/goal-prompts'
 import { PROGRAM_CONFIG } from './constants/exercise-categories'
 import { env } from './config/env'
 import { logger } from './logger'
@@ -267,58 +268,38 @@ REGLAS CRÍTICAS:
 }
 
 /**
- * Translates goal enums to human-readable Spanish names.
- */
-function translateGoal(goal: string): string {
-  const goalTranslations: Record<string, string> = {
-    gain_muscle: 'Hipertrofia',
-    maintain: 'Mantenimiento',
-    improve_speed: 'Velocidad',
-    improve_endurance: 'Resistencia',
-    lose_weight: 'Pérdida de Peso',
-    increase_flexibility: 'Flexibilidad',
-  }
-  return goalTranslations[goal] || goal
-}
-
-/**
- * Generates program metadata deterministically (no LLM call needed).
- * Follows naming conventions: human-readable Spanish, no enums or technical terms.
+ * Generates program metadata deterministically based on the primary goal.
+ * Uses the new goal-based system for naming and descriptions.
  */
 function generateProgramMetadata(
   userData: UserData,
   programRequirements: ProgramRequirements | undefined
-): { name: string; description: string; difficulty_level: string } {
-  // Translate goals to Spanish
-  const translatedGoals = userData.goals.map(translateGoal)
-  const mainGoal = translatedGoals[0] || 'Acondicionamiento General'
+): { name: string; description: string; difficulty_level: string; program_type: string } {
+  // Get primary goal using the new mapping
+  const primaryGoal = mapUserGoalsToProgramGoal(userData.goals)
+  const goalMeta = GOAL_METADATA[primaryGoal]
   
-  // Generate human-readable program name (no enums, no "Resilience Pro Nivel X")
+  // Program names based on goal
   const programNames: Record<string, string> = {
-    'Hipertrofia': 'Fuerza y Desarrollo Muscular',
-    'Mantenimiento': 'Mantenimiento y Tonificación',
-    'Velocidad': 'Potencia Explosiva',
-    'Resistencia': 'Resistencia y Acondicionamiento',
-    'Pérdida de Peso': 'Acondicionamiento Metabólico',
-    'Flexibilidad': 'Movilidad y Control Corporal',
+    improve_muscle_power: 'Potencia Explosiva',
+    increase_muscle_mass: 'Desarrollo Muscular',
+    improve_speed: 'Velocidad y Agilidad',
+    maintenance: 'Mantenimiento Integral',
   }
-  const programName = programNames[mainGoal] || 'Acondicionamiento General'
   
-  // Generate natural description (no enums)
-  const goalDescriptions: Record<string, string> = {
-    'Hipertrofia': 'desarrollar masa muscular y fuerza a través de trabajo con cargas progresivas',
-    'Mantenimiento': 'mantener tu condición física actual con trabajo equilibrado de fuerza y resistencia',
-    'Velocidad': 'mejorar tu velocidad y potencia explosiva mediante ejercicios balísticos y pliométricos',
-    'Resistencia': 'desarrollar tu capacidad cardiovascular y resistencia muscular con circuitos de alta intensidad',
-    'Pérdida de Peso': 'optimizar tu composición corporal combinando trabajo de fuerza y circuitos metabólicos',
-    'Flexibilidad': 'mejorar tu rango de movimiento y control corporal con énfasis en movilidad',
+  // Program descriptions based on goal
+  const programDescriptions: Record<string, string> = {
+    improve_muscle_power: 'Programa diseñado para desarrollar potencia explosiva y fuerza reactiva mediante ejercicios combinados de carga y velocidad.',
+    increase_muscle_mass: 'Programa enfocado en hipertrofia muscular con alto volumen de entrenamiento y progresión de cargas.',
+    improve_speed: 'Programa orientado a mejorar la velocidad y capacidad balística con ejercicios de alta demanda neural.',
+    maintenance: 'Programa full body equilibrado para mantener tu condición física con un enfoque sostenible.',
   }
-  const goalDescription = goalDescriptions[mainGoal] || 'mejorar tu condición física general'
   
   return {
-    name: programName,
-    description: `Programa enfocado en ${goalDescription}. Incluye progresión semanal adaptada a tu nivel.`,
+    name: programNames[primaryGoal] || 'Acondicionamiento General',
+    description: programDescriptions[primaryGoal] || 'Programa personalizado para mejorar tu condición física.',
     difficulty_level: userData.fitness_level,
+    program_type: primaryGoal,
   }
 }
 
@@ -344,9 +325,21 @@ export async function generateProgramWithLLM(
     throw new Error('No exercises available in database')
   }
 
-  // Fetch the active system prompt configuration from DB (or defaults)
-  const promptModules = await getActiveSystemPrompt()
-  const systemPrompt = buildSystemPrompt(promptModules)
+  // Determine primary goal for this program
+  const primaryGoal = mapUserGoalsToProgramGoal(userData.goals)
+  const goalLabel = getPrimaryGoalLabel(userData.goals)
+  
+  logger.info('Building program prompt', { 
+    primaryGoal, 
+    goalLabel,
+    userGoals: userData.goals 
+  })
+
+  // Fetch the active goal prompts from DB (or defaults)
+  const goalPrompts = await getActiveGoalPrompts()
+  
+  // Build the complete system prompt (base + goal-specific)
+  const systemPrompt = buildProgramPrompt(userData.goals, goalPrompts)
   
   // Generate program metadata (deterministic, no LLM call)
   const programMetadata = generateProgramMetadata(userData, programRequirements)
@@ -389,6 +382,7 @@ export async function generateProgramWithLLM(
       description: programMetadata.description,
       duration_weeks: PROGRAM_CONFIG.DURATION_WEEKS,
       difficulty_level: programMetadata.difficulty_level,
+      program_type: programMetadata.program_type,
     },
     workouts: allWorkouts,
   }
