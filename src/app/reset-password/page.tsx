@@ -19,89 +19,222 @@ function ResetPasswordForm() {
   const [tokenValid, setTokenValid] = useState<boolean | null>(null)
 
   useEffect(() => {
-    // Check for Supabase error parameters first
-    const error = searchParams.get('error')
-    const errorCode = searchParams.get('error_code')
-    const errorDescription = searchParams.get('error_description')
-    
-    // Also check hash for errors
-    const hash = window.location.hash
-    let hashError: string | null = null
-    let hashErrorCode: string | null = null
-    
-    if (hash) {
-      const hashParams = new URLSearchParams(hash.substring(1))
-      hashError = hashParams.get('error')
-      hashErrorCode = hashParams.get('error_code')
-    }
-
-    if (error || hashError) {
-      setTokenValid(false)
-      const finalErrorCode = errorCode || hashErrorCode
-      
-      let errorMessage = 'Error al procesar el enlace de recuperación.'
-      
-      if (finalErrorCode === 'otp_expired') {
-        errorMessage = 'El enlace de recuperación ha expirado. Los enlaces de recuperación son válidos por 1 hora. Por favor, solicita un nuevo enlace.'
-      } else if (finalErrorCode === 'token_not_found') {
-        errorMessage = 'El enlace de recuperación no es válido. Por favor, solicita un nuevo enlace.'
-      } else if (errorDescription) {
-        errorMessage = decodeURIComponent(errorDescription)
+    // Function to check for token with retry logic (hash might load after initial render)
+    const checkTokenAndErrors = async (retryCount = 0) => {
+      // Small delay on retry to allow hash to be set
+      if (retryCount > 0) {
+        await new Promise(resolve => setTimeout(resolve, 100))
       }
-      
-      setError(errorMessage)
-      return
-    }
 
-    // Supabase sends tokens in hash fragment: #access_token=...&type=recovery
-    // We need to check both hash and query params
-    const checkToken = () => {
-      // Check hash fragment (Supabase default)
+      // Check for Supabase error parameters first
+      const error = searchParams.get('error')
+      const errorCode = searchParams.get('error_code')
+      const errorDescription = searchParams.get('error_description')
+      
+      // Also check hash for errors
+      const hash = window.location.hash
+      let hashError: string | null = null
+      let hashErrorCode: string | null = null
+      let hashErrorDescription: string | null = null
+      
+      if (hash) {
+        const hashParams = new URLSearchParams(hash.substring(1))
+        hashError = hashParams.get('error')
+        hashErrorCode = hashParams.get('error_code')
+        hashErrorDescription = hashParams.get('error_description')
+      }
+
+      // Log full URL details for debugging
+      console.log(`Reset password page loaded (attempt ${retryCount + 1}):`, {
+        fullUrl: window.location.href,
+        hash: window.location.hash,
+        hashLength: window.location.hash.length,
+        search: window.location.search,
+        error,
+        errorCode,
+        errorDescription,
+        hashError,
+        hashErrorCode,
+        hashErrorDescription,
+        // Parse hash to see what's actually there
+        hashParams: hash ? Object.fromEntries(new URLSearchParams(hash.substring(1)).entries()) : null,
+        // Also check if there's a token in query params (some Supabase configs use this)
+        queryParams: Object.fromEntries(searchParams.entries())
+      })
+
+      if (error || hashError) {
+        setTokenValid(false)
+        const finalErrorCode = errorCode || hashErrorCode
+        const finalErrorDescription = errorDescription || hashErrorDescription
+        
+        let errorMessage = 'Error al procesar el enlace de recuperación.'
+        
+        if (finalErrorCode === 'otp_expired') {
+          errorMessage = 'El enlace de recuperación ha expirado. Los enlaces de recuperación son válidos por 1 hora. ⚠️ IMPORTANTE: Si solicitaste múltiples enlaces, asegúrate de usar el ÚLTIMO correo que recibiste, no uno anterior.'
+        } else if (finalErrorCode === 'token_not_found') {
+          errorMessage = 'El enlace de recuperación no es válido. ⚠️ Si solicitaste múltiples enlaces, usa solo el MÁS RECIENTE. Los enlaces anteriores quedan invalidados cuando solicitas uno nuevo.'
+        } else if (finalErrorCode === 'invalid_request' || finalErrorCode === 'redirect_to_not_allowed') {
+          errorMessage = '⚠️ CONFIGURACIÓN REQUERIDA: El URL de redirección no está permitido en Supabase. Por favor, agrega "https://resilience-pro-admin.vercel.app/reset-password" a la lista de URLs permitidas en tu dashboard de Supabase (Auth > URL Configuration).'
+        } else if (finalErrorDescription) {
+          errorMessage = decodeURIComponent(finalErrorDescription)
+        } else if (error || hashError) {
+          errorMessage = `Error: ${error || hashError}. Código: ${finalErrorCode || 'desconocido'}`
+        }
+        
+        setError(errorMessage)
+        return
+      }
+
+      // Supabase sends tokens in hash fragment: #access_token=...&type=recovery&refresh_token=...
+      // We need to extract the token from the hash and set the session explicitly
       let accessToken: string | null = null
+      let refreshToken: string | null = null
       let type: string | null = null
 
       if (hash) {
         const hashParams = new URLSearchParams(hash.substring(1))
         accessToken = hashParams.get('access_token')
+        refreshToken = hashParams.get('refresh_token')
         type = hashParams.get('type')
+        
+        console.log('Hash params extracted:', {
+          hasAccessToken: !!accessToken,
+          hasRefreshToken: !!refreshToken,
+          type: type,
+          hashLength: hash.length,
+          allHashParams: Object.fromEntries(hashParams.entries())
+        })
       }
 
-      // Also check query params (alternative format)
-      const queryToken = searchParams.get('token')
+      // Also check query params (some Supabase configurations or email clients might use this)
+      const queryToken = searchParams.get('token') || searchParams.get('access_token')
       const queryType = searchParams.get('type')
+      
+      // Check for Supabase auth callback format: ?token=xxx&type=recovery
+      // This happens when Supabase redirects through their auth server
+      console.log('Query params check:', {
+        hasToken: !!queryToken,
+        queryType: queryType,
+        allQueryParams: Object.fromEntries(searchParams.entries())
+      })
 
       // Use whichever token we find
       const token = accessToken || queryToken
       const tokenType = type || queryType
 
       if (!token) {
+        // If no token found and this is first attempt, retry once (hash might load late)
+        if (retryCount === 0 && !hash && searchParams.toString() === '') {
+          console.log('No token found on first attempt, retrying...')
+          setTimeout(() => checkTokenAndErrors(1), 200)
+          return
+        }
+        
         setTokenValid(false)
-        // Log for debugging
-        console.log('No token found. URL:', window.location.href)
-        console.log('Hash:', window.location.hash)
-        console.log('Search:', window.location.search)
-        setError('No se encontró un token de recuperación válido en la URL. Asegúrate de hacer clic en el enlace completo del correo electrónico.')
+        // Check if this is a direct visit (no token, no error)
+        if (!hash && searchParams.toString() === '') {
+          setError('Por favor, haz clic en el enlace del correo electrónico más reciente. Si solicitaste múltiples enlaces, asegúrate de usar el ÚLTIMO que recibiste.')
+        } else {
+          setError('No se encontró un token de recuperación válido en la URL. Asegúrate de hacer clic en el enlace completo del correo electrónico más reciente. Si el problema persiste, verifica que la URL de redirección esté configurada correctamente en Supabase.')
+        }
         return
       }
 
-      // Type should be 'recovery' for password reset, but we'll be lenient
+      // Type should be 'recovery' for password reset
       if (tokenType && tokenType !== 'recovery' && !queryToken) {
-        // Only error if we have a type and it's not recovery
         console.warn('Token type is not recovery:', tokenType)
       }
 
-      setTokenValid(true)
+      // Extract token from hash and set the session explicitly
+      // This is required because getSession() reads from localStorage, not URL hash
+      try {
+        if (accessToken) {
+          // Set the session using the access token from the hash fragment
+          const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken || '', // Refresh token may not always be present
+          })
+
+          if (sessionError) {
+            console.error('Error setting session from hash:', sessionError)
+            setTokenValid(false)
+            
+            if (sessionError.message?.includes('expired') || sessionError.message?.includes('invalid') || sessionError.message?.includes('token')) {
+              setError('El enlace de recuperación ha expirado o no es válido. Por favor, solicita uno nuevo.')
+            } else {
+              setError(`Error al establecer sesión: ${sessionError.message}`)
+            }
+            return
+          }
+
+          // Verify we have a valid session
+          if (sessionData?.session) {
+            console.log('Session established successfully from hash token')
+            setTokenValid(true)
+          } else {
+            setTokenValid(false)
+            setError('No se pudo establecer una sesión válida. Por favor, solicita un nuevo enlace de recuperación.')
+          }
+        } else {
+          // Fallback: try getSession() for query param tokens
+          const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+          
+          if (sessionError) {
+            console.error('Session error when checking token:', sessionError)
+            setTokenValid(false)
+            if (sessionError.message?.includes('expired') || sessionError.message?.includes('invalid')) {
+              setError('El enlace de recuperación ha expirado o no es válido. Por favor, solicita uno nuevo.')
+            } else {
+              setError(`Error al validar el token: ${sessionError.message}`)
+            }
+            return
+          }
+
+          if (session) {
+            setTokenValid(true)
+          } else {
+            setTokenValid(false)
+            setError('No se pudo establecer una sesión válida. Por favor, solicita un nuevo enlace de recuperación.')
+          }
+        }
+      } catch (err: any) {
+        console.error('Error checking token:', err)
+        setTokenValid(false)
+        setError('Error al verificar el token de recuperación. Por favor, intenta nuevamente o solicita un nuevo enlace.')
+      }
     }
 
+    checkTokenAndErrors()
+
     // Check immediately
-    checkToken()
+    checkTokenAndErrors()
 
     // Also listen for hash changes (in case it loads after initial render)
-    const handleHashChange = () => checkToken()
+    const handleHashChange = () => {
+      checkTokenAndErrors()
+    }
     window.addEventListener('hashchange', handleHashChange)
+
+    // Also check periodically for hash (some browsers/redirects set it after page load)
+    let hashCheckInterval: NodeJS.Timeout | null = null
+    let timeoutId: NodeJS.Timeout | null = null
+    
+    hashCheckInterval = setInterval(() => {
+      if (window.location.hash) {
+        console.log('Hash detected on interval check, re-validating...')
+        checkTokenAndErrors()
+      }
+    }, 500)
+
+    // Clear interval after 5 seconds (don't check forever)
+    timeoutId = setTimeout(() => {
+      if (hashCheckInterval) clearInterval(hashCheckInterval)
+    }, 5000)
 
     return () => {
       window.removeEventListener('hashchange', handleHashChange)
+      if (hashCheckInterval) clearInterval(hashCheckInterval)
+      if (timeoutId) clearTimeout(timeoutId)
     }
   }, [searchParams])
 
@@ -123,37 +256,43 @@ function ResetPasswordForm() {
     setLoading(true)
 
     try {
-      // Get token from URL hash or query params
+      // Extract token from hash fragment (Supabase sends it here)
       const hash = window.location.hash
       let accessToken: string | null = null
+      let refreshToken: string | null = null
 
       if (hash) {
         const hashParams = new URLSearchParams(hash.substring(1))
         accessToken = hashParams.get('access_token')
+        refreshToken = hashParams.get('refresh_token')
       }
 
-      // Fallback to query params
+      // Fallback to query params if hash doesn't have token
       if (!accessToken) {
         accessToken = searchParams.get('token')
       }
 
       if (!accessToken) {
-        throw new Error('Token no encontrado en la URL')
+        throw new Error('Token no encontrado en la URL. Por favor, solicita un nuevo enlace de recuperación.')
       }
 
-      // For password reset, Supabase requires us to set the session first
-      // The token in the URL is actually a session token, not a password reset token
-      // We need to exchange it for a session, then update the password
-      
-      // Set the session using the access token from the URL
+      // Set the session using the token from the URL
+      // This is required because the token is in the hash fragment, not localStorage
       const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
         access_token: accessToken,
-        refresh_token: '', // Not needed for password reset flow
+        refresh_token: refreshToken || '',
       })
 
       if (sessionError) {
+        console.error('Session error:', sessionError)
         throw new Error(`Error al establecer sesión: ${sessionError.message}`)
       }
+
+      if (!sessionData?.session) {
+        throw new Error('No se pudo establecer una sesión válida. El enlace puede haber expirado.')
+      }
+
+      console.log('Session established, updating password for user:', sessionData.session.user.id)
 
       // Now update the password
       const { error: updateError } = await supabase.auth.updateUser({
@@ -161,12 +300,17 @@ function ResetPasswordForm() {
       })
 
       if (updateError) {
+        console.error('Password update error:', updateError)
         throw updateError
       }
 
       // Success!
+      console.log('Password updated successfully')
       setSuccess(true)
       setLoading(false)
+
+      // Sign out to clear the recovery session
+      await supabase.auth.signOut()
 
       // Redirect to login after 3 seconds
       setTimeout(() => {
@@ -176,10 +320,12 @@ function ResetPasswordForm() {
       console.error('Password reset error:', err)
       let errorMessage = 'Error al restablecer la contraseña'
       
-      if (err.message?.includes('expired') || err.message?.includes('invalid')) {
-        errorMessage = 'El enlace de recuperación ha expirado o no es válido. Por favor, solicita uno nuevo.'
+      if (err.message?.includes('expired') || err.message?.includes('invalid') || err.message?.includes('token')) {
+        errorMessage = 'El enlace de recuperación ha expirado o no es válido. Por favor, solicita uno nuevo desde la app.'
       } else if (err.message) {
         errorMessage = err.message
+      } else if (err.error_description) {
+        errorMessage = err.error_description
       }
       
       setError(errorMessage)
