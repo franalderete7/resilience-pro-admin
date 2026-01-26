@@ -19,29 +19,57 @@ function ResetPasswordForm() {
   const [tokenValid, setTokenValid] = useState<boolean | null>(null)
 
   useEffect(() => {
-    // Check if we have a token in the URL
-    // Supabase sends it as hash fragment: #access_token=...&type=recovery
-    const hash = window.location.hash
-    const urlParams = new URLSearchParams(hash.substring(1))
-    const accessToken = urlParams.get('access_token')
-    const type = urlParams.get('type')
+    // Supabase sends tokens in hash fragment: #access_token=...&type=recovery
+    // We need to check both hash and query params
+    const checkToken = () => {
+      // Check hash fragment (Supabase default)
+      const hash = window.location.hash
+      let accessToken: string | null = null
+      let type: string | null = null
 
-    // Also check query params (some configurations use ?token=...)
-    const queryToken = searchParams.get('token')
+      if (hash) {
+        const hashParams = new URLSearchParams(hash.substring(1))
+        accessToken = hashParams.get('access_token')
+        type = hashParams.get('type')
+      }
 
-    if (!accessToken && !queryToken) {
-      setTokenValid(false)
-      setError('No se encontró un token de recuperación válido en la URL.')
-      return
+      // Also check query params (alternative format)
+      const queryToken = searchParams.get('token')
+      const queryType = searchParams.get('type')
+
+      // Use whichever token we find
+      const token = accessToken || queryToken
+      const tokenType = type || queryType
+
+      if (!token) {
+        setTokenValid(false)
+        // Log for debugging
+        console.log('No token found. URL:', window.location.href)
+        console.log('Hash:', window.location.hash)
+        console.log('Search:', window.location.search)
+        setError('No se encontró un token de recuperación válido en la URL. Asegúrate de hacer clic en el enlace completo del correo electrónico.')
+        return
+      }
+
+      // Type should be 'recovery' for password reset, but we'll be lenient
+      if (tokenType && tokenType !== 'recovery' && !queryToken) {
+        // Only error if we have a type and it's not recovery
+        console.warn('Token type is not recovery:', tokenType)
+      }
+
+      setTokenValid(true)
     }
 
-    if (type !== 'recovery' && !queryToken) {
-      setTokenValid(false)
-      setError('El tipo de token no es válido para recuperación de contraseña.')
-      return
-    }
+    // Check immediately
+    checkToken()
 
-    setTokenValid(true)
+    // Also listen for hash changes (in case it loads after initial render)
+    const handleHashChange = () => checkToken()
+    window.addEventListener('hashchange', handleHashChange)
+
+    return () => {
+      window.removeEventListener('hashchange', handleHashChange)
+    }
   }, [searchParams])
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -64,14 +92,37 @@ function ResetPasswordForm() {
     try {
       // Get token from URL hash or query params
       const hash = window.location.hash
-      const urlParams = new URLSearchParams(hash.substring(1))
-      const accessToken = urlParams.get('access_token') || searchParams.get('token')
+      let accessToken: string | null = null
 
-      if (!accessToken) {
-        throw new Error('Token no encontrado')
+      if (hash) {
+        const hashParams = new URLSearchParams(hash.substring(1))
+        accessToken = hashParams.get('access_token')
       }
 
-      // Update password using Supabase
+      // Fallback to query params
+      if (!accessToken) {
+        accessToken = searchParams.get('token')
+      }
+
+      if (!accessToken) {
+        throw new Error('Token no encontrado en la URL')
+      }
+
+      // For password reset, Supabase requires us to set the session first
+      // The token in the URL is actually a session token, not a password reset token
+      // We need to exchange it for a session, then update the password
+      
+      // Set the session using the access token from the URL
+      const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
+        access_token: accessToken,
+        refresh_token: '', // Not needed for password reset flow
+      })
+
+      if (sessionError) {
+        throw new Error(`Error al establecer sesión: ${sessionError.message}`)
+      }
+
+      // Now update the password
       const { error: updateError } = await supabase.auth.updateUser({
         password: password,
       })
