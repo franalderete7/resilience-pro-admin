@@ -7,4 +7,16 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Missing Supabase environment variables')
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    // Automatically detect and process hash fragments from URL
+    // This is important for password reset flows
+    detectSessionInUrl: true,
+    // Persist session to localStorage
+    persistSession: true,
+    // Auto-refresh tokens
+    autoRefreshToken: true,
+    // Flow type - PKCE is more secure
+    flowType: 'pkce'
+  }
+})

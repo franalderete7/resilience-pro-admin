@@ -19,6 +19,37 @@ function ResetPasswordForm() {
   const [tokenValid, setTokenValid] = useState<boolean | null>(null)
 
   useEffect(() => {
+    // Force Supabase to process any hash fragments immediately
+    // This is critical for password reset flows where Supabase redirects with hash
+    const processHashFragment = async () => {
+      const hash = window.location.hash
+      if (hash && hash.includes('access_token')) {
+        console.log('Hash fragment detected, processing...')
+        // Supabase should automatically process this with detectSessionInUrl: true
+        // But we'll also manually trigger getSession to ensure it's processed
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session) {
+          console.log('Session processed from hash fragment')
+          setTokenValid(true)
+          return true
+        }
+      }
+      return false
+    }
+
+    // Try to process hash immediately
+    processHashFragment()
+
+    // Listen for auth state changes - Supabase might set session automatically from hash
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('Auth state changed:', { event, hasSession: !!session })
+      
+      if (event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN' || (session && tokenValid === null)) {
+        console.log('Password recovery detected via auth state change')
+        setTokenValid(true)
+      }
+    })
+
     // Function to check for token with retry logic (hash might load after initial render)
     const checkTokenAndErrors = async (retryCount = 0) => {
       // Small delay on retry to allow hash to be set
@@ -148,6 +179,14 @@ function ResetPasswordForm() {
       // Extract token from hash and set the session explicitly
       // This is required because getSession() reads from localStorage, not URL hash
       try {
+        // First, check if Supabase already set a session (from auth state change or automatic processing)
+        const { data: { session: existingSession } } = await supabase.auth.getSession()
+        if (existingSession) {
+          console.log('Session already exists, token is valid')
+          setTokenValid(true)
+          return
+        }
+
         if (accessToken) {
           // Set the session using the access token from the hash fragment
           const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
@@ -176,9 +215,15 @@ function ResetPasswordForm() {
             setError('No se pudo establecer una sesión válida. Por favor, solicita un nuevo enlace de recuperación.')
           }
         } else {
-          // Fallback: try getSession() for query param tokens
+          // No token in URL - check if session was set anyway (Supabase might have done it automatically)
           const { data: { session }, error: sessionError } = await supabase.auth.getSession()
           
+          if (session) {
+            console.log('Session found without explicit token - Supabase handled it automatically')
+            setTokenValid(true)
+            return
+          }
+
           if (sessionError) {
             console.error('Session error when checking token:', sessionError)
             setTokenValid(false)
@@ -190,12 +235,9 @@ function ResetPasswordForm() {
             return
           }
 
-          if (session) {
-            setTokenValid(true)
-          } else {
-            setTokenValid(false)
-            setError('No se pudo establecer una sesión válida. Por favor, solicita un nuevo enlace de recuperación.')
-          }
+          // No session and no error - token not found
+          setTokenValid(false)
+          setError('No se pudo establecer una sesión válida. Por favor, solicita un nuevo enlace de recuperación.')
         }
       } catch (err: any) {
         console.error('Error checking token:', err)
@@ -203,8 +245,6 @@ function ResetPasswordForm() {
         setError('Error al verificar el token de recuperación. Por favor, intenta nuevamente o solicita un nuevo enlace.')
       }
     }
-
-    checkTokenAndErrors()
 
     // Check immediately
     checkTokenAndErrors()
@@ -232,11 +272,12 @@ function ResetPasswordForm() {
     }, 5000)
 
     return () => {
+      subscription.unsubscribe()
       window.removeEventListener('hashchange', handleHashChange)
       if (hashCheckInterval) clearInterval(hashCheckInterval)
       if (timeoutId) clearTimeout(timeoutId)
     }
-  }, [searchParams])
+  }, [searchParams, tokenValid])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
