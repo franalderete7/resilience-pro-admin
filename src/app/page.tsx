@@ -1,6 +1,7 @@
 'use client'
 
-import { Suspense } from 'react'
+import { Suspense, useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/contexts/auth-context'
 import { SignInModal } from '@/components/sign-in-modal'
 import { ExerciseList } from '@/components/exercise-list'
@@ -10,8 +11,36 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ErrorBoundary } from '@/components/error-boundary'
 import { LoadingState } from '@/components/ui/loading-states'
 
-export default function Home() {
+function HomeContent() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
   const { adminUser, loading, signOut } = useAuth()
+
+  // Check for password reset errors and redirect to reset password page
+  useEffect(() => {
+    const error = searchParams.get('error')
+    const errorCode = searchParams.get('error_code')
+    
+    // Also check hash
+    const hash = window.location.hash
+    let hashError: string | null = null
+    if (hash) {
+      const hashParams = new URLSearchParams(hash.substring(1))
+      hashError = hashParams.get('error')
+    }
+
+    if ((error || hashError) && (errorCode === 'otp_expired' || errorCode === 'token_not_found')) {
+      // Redirect to reset password page with error params
+      const params = new URLSearchParams()
+      if (error) params.set('error', error)
+      if (errorCode) params.set('error_code', errorCode)
+      if (searchParams.get('error_description')) {
+        params.set('error_description', searchParams.get('error_description')!)
+      }
+      
+      router.replace(`/reset-password?${params.toString()}${hash ? '#' + hash.substring(1) : ''}`)
+    }
+  }, [searchParams, router])
 
   if (loading) {
     return (
@@ -81,5 +110,20 @@ export default function Home() {
         </Tabs>
       </main>
     </div>
+  )
+}
+
+export default function Home() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-screen items-center justify-center bg-zinc-900">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
+          <p className="text-white">Cargando...</p>
+        </div>
+      </div>
+    }>
+      <HomeContent />
+    </Suspense>
   )
 }

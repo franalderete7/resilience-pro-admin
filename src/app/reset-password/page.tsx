@@ -19,11 +19,44 @@ function ResetPasswordForm() {
   const [tokenValid, setTokenValid] = useState<boolean | null>(null)
 
   useEffect(() => {
+    // Check for Supabase error parameters first
+    const error = searchParams.get('error')
+    const errorCode = searchParams.get('error_code')
+    const errorDescription = searchParams.get('error_description')
+    
+    // Also check hash for errors
+    const hash = window.location.hash
+    let hashError: string | null = null
+    let hashErrorCode: string | null = null
+    
+    if (hash) {
+      const hashParams = new URLSearchParams(hash.substring(1))
+      hashError = hashParams.get('error')
+      hashErrorCode = hashParams.get('error_code')
+    }
+
+    if (error || hashError) {
+      setTokenValid(false)
+      const finalErrorCode = errorCode || hashErrorCode
+      
+      let errorMessage = 'Error al procesar el enlace de recuperación.'
+      
+      if (finalErrorCode === 'otp_expired') {
+        errorMessage = 'El enlace de recuperación ha expirado. Los enlaces de recuperación son válidos por 1 hora. Por favor, solicita un nuevo enlace.'
+      } else if (finalErrorCode === 'token_not_found') {
+        errorMessage = 'El enlace de recuperación no es válido. Por favor, solicita un nuevo enlace.'
+      } else if (errorDescription) {
+        errorMessage = decodeURIComponent(errorDescription)
+      }
+      
+      setError(errorMessage)
+      return
+    }
+
     // Supabase sends tokens in hash fragment: #access_token=...&type=recovery
     // We need to check both hash and query params
     const checkToken = () => {
       // Check hash fragment (Supabase default)
-      const hash = window.location.hash
       let accessToken: string | null = null
       let type: string | null = null
 
