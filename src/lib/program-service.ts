@@ -1,8 +1,20 @@
 import { supabaseAdmin } from './supabase-admin'
 import type { LLMProgramResponse } from './types/program'
+import type {
+  WorkoutStructure,
+  TemplateWeek,
+  TemplateWorkout,
+  TemplateBlock,
+  TemplateExercise,
+  WorkoutTemplate,
+  UserProgram,
+  BlockType,
+  WeightLevel,
+} from './types/workout-template'
 
 export interface CreatedProgram {
-  program_id: number
+  template_id: string
+  user_program_id: string
   name: string
   description: string | null
   duration_weeks: number
@@ -10,212 +22,123 @@ export interface CreatedProgram {
   program_type: string | null
 }
 
+/**
+ * Transforms the flat LLM response into the nested WorkoutStructure JSONB format,
+ * then inserts a single row into workout_templates + a user_programs row.
+ *
+ * Old flow: 6 tables, 100+ inserts
+ * New flow: 1 workout_templates row + 1 user_programs row = 2 inserts
+ */
 export async function createProgramFromLLMResponse(
   userId: string,
   llmResponse: LLMProgramResponse
 ): Promise<CreatedProgram> {
   const { program, workouts } = llmResponse
 
-  // 1. Create program
-  const { data: programData, error: programError } = await supabaseAdmin
-    .from('programs')
+  // ── 1. Transform flat workouts array into nested WorkoutStructure ──
+
+  // Group workouts by week_number
+  const weekMap = new Map<number, typeof workouts>()
+
+  for (const workout of workouts) {
+    const weekNum = workout.week_number ?? 1
+    if (!weekMap.has(weekNum)) {
+      weekMap.set(weekNum, [])
+    }
+    weekMap.get(weekNum)!.push(workout)
+  }
+
+  // Build the weeks array sorted by week number
+  const weeks: TemplateWeek[] = [...weekMap.entries()]
+    .sort(([a], [b]) => a - b)
+    .map(([weekNumber, weekWorkouts]) => ({
+      week_number: weekNumber,
+      workouts: weekWorkouts
+        .sort((a, b) => a.workout_order - b.workout_order)
+        .map((w): TemplateWorkout => ({
+          workout_order: w.workout_order,
+          day_of_week: w.day_of_week ?? 1,
+          name: w.name,
+          estimated_duration_minutes: w.estimated_duration_minutes ?? 60,
+          blocks: (w.blocks || []).map((block, blockIndex): TemplateBlock => ({
+            block_order: blockIndex + 1,
+            name: block.name,
+            block_type: (block.block_type || 'standard') as BlockType,
+            sets: block.sets ?? 3,
+            rest_between_exercises_seconds: block.rest_between_exercises ?? 60,
+            exercises: (block.exercises || []).map((ex, exIndex): TemplateExercise => ({
+              exercise_order: ex.exercise_order ?? exIndex + 1,
+              exercise_id: typeof ex.exercise_id === 'string'
+                ? parseInt(ex.exercise_id as unknown as string, 10)
+                : ex.exercise_id,
+              reps: String(ex.reps ?? 10),
+              weight_level: (ex.weight_level || 'no_weight') as WeightLevel,
+              rest_seconds: block.rest_between_exercises ?? 60,
+            })),
+          })),
+        })),
+    }))
+
+  const structure: WorkoutStructure = {
+    version: '1.0',
+    weeks,
+  }
+
+  // Calculate average session duration from all workouts
+  const allDurations = workouts
+    .map(w => w.estimated_duration_minutes)
+    .filter((d): d is number => d != null && d > 0)
+  const avgSessionMinutes = allDurations.length > 0
+    ? Math.round(allDurations.reduce((sum, d) => sum + d, 0) / allDurations.length)
+    : 60
+
+  // ── 2. Insert into workout_templates ──
+
+  const { data: templateData, error: templateError } = await supabaseAdmin
+    .from('workout_templates')
     .insert({
       name: program.name,
       description: program.description || null,
+      structure: structure,
       duration_weeks: program.duration_weeks,
       difficulty_level: program.difficulty_level || null,
       program_type: program.program_type || null,
+      estimated_session_minutes: avgSessionMinutes,
       created_by: userId,
+      status: 'active',
     })
     .select()
     .single()
 
-  if (programError || !programData) {
-    throw new Error(`Failed to create program: ${programError?.message}`)
+  if (templateError || !templateData) {
+    throw new Error(`Failed to create workout template: ${templateError?.message}`)
   }
 
-  const programId = programData.program_id
+  // ── 3. Create user_programs row linking user to the template ──
 
-  // 2. Create workouts and blocks
-  for (const workout of workouts) {
-    // Create workout
-    // Ensure estimated_duration_minutes is > 0 if provided
-    const estimatedDuration = workout.estimated_duration_minutes !== null && workout.estimated_duration_minutes !== undefined
-      ? Math.max(1, Math.floor(workout.estimated_duration_minutes))
-      : null
-    
-    const { data: workoutData, error: workoutError } = await supabaseAdmin
-      .from('workouts')
-      .insert({
-        name: workout.name,
-        description: workout.description || null,
-        estimated_duration_minutes: estimatedDuration,
-        difficulty_level: workout.difficulty_level || null,
-        workout_type: workout.workout_type || null,
-        created_by: userId,
-      })
-      .select()
-      .single()
+  const { data: userProgramData, error: userProgramError } = await supabaseAdmin
+    .from('user_programs')
+    .insert({
+      user_id: userId,
+      template_id: templateData.id,
+      current_week: 1,
+      current_workout: 1,
+      is_active: true,
+    })
+    .select()
+    .single()
 
-    if (workoutError || !workoutData) {
-      throw new Error(`Failed to create workout: ${workoutError?.message}`)
-    }
-
-    const workoutId = workoutData.workout_id
-
-    // Link workout to program
-    // Ensure workout_order >= 1, week_number >= 1 if provided, day_of_week 1-7 if provided
-    const workoutOrder = Math.max(1, Math.floor(workout.workout_order))
-    const weekNumber = workout.week_number !== null && workout.week_number !== undefined
-      ? Math.max(1, Math.floor(workout.week_number))
-      : null
-    const dayOfWeek = workout.day_of_week !== null && workout.day_of_week !== undefined
-      ? Math.max(1, Math.min(7, Math.floor(workout.day_of_week)))
-      : null
-    
-    const { error: programWorkoutError } = await supabaseAdmin
-      .from('program_workouts')
-      .insert({
-        program_id: programId,
-        workout_id: workoutId,
-        week_number: weekNumber,
-        day_of_week: dayOfWeek,
-        workout_order: workoutOrder,
-      })
-
-    if (programWorkoutError) {
-      throw new Error(`Failed to link workout to program: ${programWorkoutError.message}`)
-    }
-
-    // Create blocks for this workout
-    for (let blockIndex = 0; blockIndex < workout.blocks.length; blockIndex++) {
-      const block = workout.blocks[blockIndex]
-
-      // Create block
-      // Ensure sets is > 0 if provided, rest_between_exercises >= 0
-      const blockSets = block.sets !== null && block.sets !== undefined 
-        ? Math.max(1, Math.floor(block.sets)) 
-        : null
-      const restBetweenExercises = Math.max(0, Math.floor(block.rest_between_exercises || 60))
-      
-      const { data: blockData, error: blockError } = await supabaseAdmin
-        .from('blocks')
-        .insert({
-          name: block.name,
-          block_type: block.block_type || 'standard',
-          sets: blockSets,
-          rest_between_exercises: restBetweenExercises,
-          created_by: userId,
-        })
-        .select()
-        .single()
-
-      if (blockError || !blockData) {
-        throw new Error(`Failed to create block: ${blockError?.message}`)
-      }
-
-      const blockId = blockData.block_id
-
-      // Link block to workout
-      const { error: workoutBlockError } = await supabaseAdmin
-        .from('workout_blocks')
-        .insert({
-          workout_id: workoutId,
-          block_id: blockId,
-          block_order: blockIndex + 1,
-        })
-
-      if (workoutBlockError) {
-        throw new Error(`Failed to link block to workout: ${workoutBlockError.message}`)
-      }
-
-      // Create block_exercises
-      // All values should already be normalized, but add final safety checks
-      const blockExercises = block.exercises.map((exercise, index) => {
-        // Handle case where exercise might still be a number or string (shouldn't happen after normalization, but safety check)
-        let exerciseObj: {
-          exercise_id: number
-          reps?: number
-          exercise_order?: number
-          weight_level?: string | null
-        }
-        
-        if (typeof exercise === 'number') {
-          console.warn(`Warning: Exercise at index ${index} is still a number (${exercise}) after normalization. Converting to object.`)
-          exerciseObj = {
-            exercise_id: Math.floor(exercise),
-            reps: 10,
-            exercise_order: index + 1,
-            weight_level: null,
-          }
-        } else if (typeof exercise === 'string') {
-          console.warn(`Warning: Exercise at index ${index} is still a string (${exercise}) after normalization. Converting to object.`)
-          exerciseObj = {
-            exercise_id: parseInt(exercise, 10),
-            reps: 10,
-            exercise_order: index + 1,
-            weight_level: null,
-          }
-        } else if (!exercise || typeof exercise !== 'object') {
-          throw new Error(`Invalid exercise format at index ${index}: ${typeof exercise}. Expected object, got ${JSON.stringify(exercise)}`)
-        } else {
-          exerciseObj = exercise
-        }
-        
-        // Final safety checks - ensure all values meet database constraints
-        const exerciseOrder = Math.max(1, Math.floor(exerciseObj.exercise_order || index + 1))
-        const reps = Math.max(1, Math.floor(exerciseObj.reps || 10)) // Default to 10 if invalid
-        const exerciseId = Math.floor(exerciseObj.exercise_id)
-        
-        // Validate critical fields
-        if (exerciseOrder < 1) {
-          throw new Error(`Invalid exercise_order: ${exerciseOrder}. Must be >= 1.`)
-        }
-        if (reps < 1) {
-          throw new Error(`Invalid reps: ${reps}. Must be >= 1.`)
-        }
-        if (!exerciseId || exerciseId < 1 || isNaN(exerciseId)) {
-          throw new Error(`Invalid exercise_id: ${exerciseId}. Must be a positive integer.`)
-        }
-        
-        return {
-          block_id: blockId,
-          exercise_id: exerciseId,
-          reps: reps,
-          weight_level: exerciseObj.weight_level || null,
-          exercise_order: exerciseOrder,
-        }
-      })
-
-      const { error: blockExercisesError, data: insertedData } = await supabaseAdmin
-        .from('block_exercises')
-        .insert(blockExercises)
-        .select()
-
-      if (blockExercisesError) {
-        // Log detailed error information for debugging
-        console.error('Supabase block_exercises insert error:', {
-          error: blockExercisesError,
-          blockExercises: blockExercises.map(ex => ({
-            block_id: ex.block_id,
-            exercise_id: ex.exercise_id,
-            reps: ex.reps,
-            exercise_order: ex.exercise_order,
-            weight_level: ex.weight_level,
-          })),
-        })
-        throw new Error(`Failed to create block exercises: ${blockExercisesError.message}. Details: ${JSON.stringify(blockExercisesError)}`)
-      }
-    }
+  if (userProgramError || !userProgramData) {
+    throw new Error(`Failed to create user program: ${userProgramError?.message}`)
   }
 
   return {
-    program_id: programId,
-    name: programData.name,
-    description: programData.description,
-    duration_weeks: programData.duration_weeks,
-    difficulty_level: programData.difficulty_level,
-    program_type: programData.program_type,
+    template_id: templateData.id,
+    user_program_id: userProgramData.id,
+    name: templateData.name,
+    description: templateData.description,
+    duration_weeks: templateData.duration_weeks,
+    difficulty_level: templateData.difficulty_level,
+    program_type: templateData.program_type,
   }
 }
-

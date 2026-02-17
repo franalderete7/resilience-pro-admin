@@ -68,10 +68,15 @@ async function generateWeekWorkouts(
   const workoutOrderStart = (weekNumber - 1) * PROGRAM_CONFIG.WORKOUTS_PER_WEEK + 1
   const workoutOrderEnd = weekNumber * PROGRAM_CONFIG.WORKOUTS_PER_WEEK
 
-  // Phase description based on week number (Semanas 1-2: Base, Semanas 3-4: Intensificación)
-  const phaseDescription = weekNumber <= 2 
-    ? 'FASE BASE: menor volumen, énfasis en técnica y adaptación' 
-    : 'FASE INTENSIFICACIÓN: mayor volumen e intensidad'
+  // Phase description based on week number
+  let phaseDescription: string
+  if (weekNumber <= 4) {
+    phaseDescription = 'FASE BASE: menor volumen, énfasis en técnica y adaptación'
+  } else if (weekNumber <= 8) {
+    phaseDescription = 'FASE DESARROLLO: aumento progresivo de volumen e intensidad'
+  } else {
+    phaseDescription = 'FASE INTENSIFICACIÓN: mayor volumen, intensidad máxima y especificidad'
+  }
 
   const weekPrompt = `GENERA SOLO LA SEMANA ${weekNumber} DE ${PROGRAM_CONFIG.DURATION_WEEKS}
 
@@ -306,7 +311,7 @@ function generateProgramMetadata(
 /**
  * Generates a personalized training program using the LLM.
  * 
- * Uses a week-by-week generation strategy to ensure all 12 workouts are created.
+ * Uses a week-by-week generation strategy to ensure all 36 workouts are created.
  * Each week is generated in a separate API call to avoid token limits.
  * 
  * @param userData - User profile and preferences

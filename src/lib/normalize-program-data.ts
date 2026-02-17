@@ -6,7 +6,7 @@ import { PROGRAM_CONFIG } from './constants/exercise-categories'
  * This prevents validation errors from Supabase by ensuring all values are valid before insertion.
  */
 export function normalizeProgramData(data: LLMProgramResponse): LLMProgramResponse {
-  // Normalize program duration_weeks (must be > 0, enforce 4 weeks)
+  // Normalize program duration_weeks (must be > 0, enforce 12 weeks)
   data.program.duration_weeks = PROGRAM_CONFIG.DURATION_WEEKS
 
   // Normalize workouts

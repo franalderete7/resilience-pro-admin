@@ -48,6 +48,11 @@ User profiles and authentication data.
 - `weight` (numeric(5,2)) - In kilograms
 - `weight_goal` (numeric(5,2)) - Target weight in kilograms
 - `fitness_level` (user_fitness_level enum)
+- `phone_country_code` (varchar(10)) - Country dial code (e.g., '+54' for Argentina)
+- `phone_number` (varchar(20)) - Phone number (8-15 digits)
+- `sport` (user_sport enum) - Primary sport
+- `sport_other` (varchar(50)) - Custom sport name if `sport = 'other'`
+- `sport_level` (user_sport_level enum) - Sport skill level (required for most sports)
 - `created_at` (timestamptz, DEFAULT now())
 - `updated_at` (timestamptz, DEFAULT now())
 
@@ -315,6 +320,22 @@ Weight/load levels for exercises.
 - `medium` - Medium load
 - `heavy` - Heavy load
 
+### `user_sport`
+User's primary sport.
+- `futbol` - Fútbol/Soccer
+- `hockey` - Hockey
+- `rugby` - Rugby
+- `none` - No specific sport
+- `other` - Other sport (requires `sport_other` field)
+
+### `user_sport_level`
+Sport skill/competition level.
+- `recreational` - Recreational/Amateur
+- `competitive` - Competitive
+- `professional` - Professional/Elite
+
+**Note:** Required for sports except `none`. When `sport = 'other'`, `sport_other` must be provided.
+
 ---
 
 ## Triggers & Functions
@@ -356,6 +377,131 @@ Each workout contains exactly **6 blocks** following the Resilience Pro methodol
 
 ---
 
+---
+
+## TypeScript Type Mappings
+
+### Exercise Types
+Located in `src/lib/types/exercise.ts`:
+
+```typescript
+interface Exercise {
+  exercise_id: number
+  name: string
+  description: string | null
+  video_url: string | null
+  image_url: string | null
+  category: string | null
+  muscle_groups: string[] | null
+  equipment_needed: string[] | null
+  difficulty_level: 'beginner' | 'intermediate' | 'advanced' | null
+  created_by: string
+  created_at: string
+  updated_at: string
+}
+```
+
+### Program Types
+Located in `src/lib/types/program.ts`:
+
+```typescript
+interface LLMProgramResponse {
+  program: {
+    name: string
+    description?: string
+    duration_weeks: number
+    difficulty_level?: string
+    program_type?: string
+  }
+  workouts: Array<{
+    name: string
+    description?: string
+    estimated_duration_minutes?: number
+    difficulty_level?: string
+    workout_type?: string
+    week_number?: number
+    day_of_week?: number
+    workout_order: number
+    blocks: Array<{
+      name: string
+      block_type?: string
+      sets?: number
+      rest_between_exercises?: number
+      exercises: Array<{
+        exercise_id: number
+        reps: number
+        weight_level?: string
+        exercise_order: number
+      }>
+    }>
+  }>
+}
+```
+
+---
+
+## Validation Schemas
+
+### Exercise Creation Schema
+Located in `src/lib/validation/schemas.ts`:
+
+- `name`: Required, 1-100 characters
+- `description`: Optional text
+- `video_url`: Optional valid URL
+- `image_url`: Optional valid URL
+- `category`: Optional string (exercise_category enum)
+- `muscle_groups`: Optional string array
+- `equipment_needed`: Optional string array
+- `difficulty_level`: Optional enum ('beginner', 'intermediate', 'advanced')
+
+### Program Generation Schema
+
+- `userData.fitness_level`: Required enum ('beginner', 'intermediate', 'advanced')
+- `userData.goals`: Required array of strings (min 1)
+- `userData.gender`: Optional string
+- `userData.height`: Optional positive number
+- `userData.weight`: Optional positive number
+- `userData.weight_goal`: Optional positive number
+- `userData.preferences.available_equipment`: Optional string array
+- `userData.preferences.workout_days_per_week`: Optional integer (1-7)
+- `userData.preferences.preferred_duration_minutes`: Optional integer (15-180)
+- `programRequirements.duration_weeks`: Optional positive integer
+- `programRequirements.focus`: Optional string
+
+---
+
+## Constants & Configuration
+
+### Exercise Categories
+Located in `src/lib/constants/exercise-categories.ts`:
+
+- `accessories` → "Accesorios"
+- `accelerations` → "Aceleraciones"
+- `agility` → "Agilidad"
+- `ballistics and plyometrics` → "Balísticos y Plyo"
+- `core` → "Core"
+- `olympic-derivatives` → "Derivados de Olímpicos"
+- `hip-dominant` → "Dominante de Cadera"
+- `knee-dominant` → "Dominante de Rodilla"
+- `ankle-dominant` → "Dominante de Tobillo"
+- `pushes` → "Empujes"
+- `isometrics` → "Isos"
+- `mobility and flexibility` → "Movilidad y Flexibilidad"
+- `running technique` → "Técnicas de Carrera"
+- `pulls` → "Tracciones"
+
+### Difficulty Levels
+- `beginner` → "Principiante"
+- `intermediate` → "Intermedio"
+- `advanced` → "Avanzado"
+
+### Program Configuration
+- `DURATION_WEEKS`: 4
+- `WORKOUTS_PER_WEEK`: 3
+- `TOTAL_WORKOUTS`: 12 (4 weeks × 3 workouts/week)
+
+---
+
 ## Notes
 
 - All timestamps use `timestamptz` (timestamp with time zone)
@@ -363,3 +509,6 @@ Each workout contains exactly **6 blocks** following the Resilience Pro methodol
 - Array columns (`goals`, `muscle_groups`, `equipment_needed`) use PostgreSQL array types with GIN indexes for efficient searching
 - The schema enforces data integrity through CHECK constraints and foreign keys
 - User authentication is handled by Supabase Auth (`auth.users`)
+- Phone numbers are stored separately as `phone_country_code` and `phone_number` for international support
+- Sport information is optional but when provided, `sport_level` is required for most sports (except `none`)
+- When `sport = 'other'`, the `sport_other` field must contain the custom sport name

@@ -34,7 +34,25 @@ export async function POST(request: NextRequest) {
       return rateLimitErrorResponse(reset)
     }
 
-    // 3. Parse and validate request body
+    // 3. Check program limit (3 free programs)
+    const { count: programCount, error: countError } = await supabaseAdmin
+      .from('user_programs')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+
+    if (countError) {
+      logger.error('Failed to check program count', { userId: user.id, error: countError })
+      return errorResponse('Failed to check program limit', 500)
+    }
+
+    if ((programCount ?? 0) >= 3) {
+      return errorResponse(
+        'Has alcanzado el límite de 3 programas gratuitos. Actualiza a Premium para crear más.',
+        403
+      )
+    }
+
+    // 4. Parse and validate request body
     const body = await request.json()
     const validationResult = createProgramSchema.safeParse(body)
     
@@ -54,10 +72,7 @@ export async function POST(request: NextRequest) {
       goals: userData.goals 
     })
 
-    // 4. Get available exercise IDs for validation from cached API
-    let availableExerciseIds: number[] = []
-    
-    // Direct DB query for exercise IDs (server-side, no need for API fetch)
+    // 5. Get available exercise IDs for validation
     const { data: exercises, error: exercisesError } = await supabaseAdmin
       .from('exercises')
       .select('exercise_id')
@@ -67,14 +82,14 @@ export async function POST(request: NextRequest) {
       return errorResponse('Failed to fetch exercises', 500)
     }
 
-    availableExerciseIds = exercises?.map((e) => e.exercise_id) || []
+    const availableExerciseIds = exercises?.map((e) => e.exercise_id) || []
 
     if (availableExerciseIds.length === 0) {
       logger.error('No exercises available in database')
       return errorResponse('No exercises available in database', 400)
     }
 
-    // 5. Generate program with LLM with retry mechanism
+    // 6. Generate program with LLM with retry mechanism
     const MAX_RETRIES = 3
     let llmResponse: any = null
     let normalizedResponse: any = null
@@ -83,33 +98,26 @@ export async function POST(request: NextRequest) {
 
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
       try {
-        // Generate program with LLM (include previous error feedback if retrying)
         llmResponse = await generateProgramWithLLM(
           body.userData,
           body.programRequirements,
           lastError
         )
 
-        // Normalize ALL numeric fields to ensure database constraints are met
         normalizedResponse = normalizeProgramData(llmResponse)
 
-        // Validate LLM response
         validation = await validateLLMResponse(normalizedResponse, availableExerciseIds)
 
         if (validation.valid && validation.data) {
-          // Validation passed! Break out of retry loop
           break
         } else {
-          // Validation failed - store error for retry feedback
           lastError = validation.error || 'Invalid program structure'
           
-          // If this is the last attempt, we'll return the error below
           if (attempt === MAX_RETRIES) {
             console.warn(`Program generation failed after ${MAX_RETRIES} attempts. Last error: ${lastError}`)
             break
           }
           
-          // Wait a bit before retrying (exponential backoff)
           await new Promise(resolve => setTimeout(resolve, 1000 * attempt))
           logger.warn(`Program generation attempt ${attempt} failed. Retrying...`, { 
             userId: user.id,
@@ -121,7 +129,7 @@ export async function POST(request: NextRequest) {
         lastError = error.message || 'Failed to generate program'
         
         if (attempt === MAX_RETRIES) {
-          throw error // Re-throw on last attempt
+          throw error
         }
         
         logger.error(`Program generation attempt ${attempt} threw error`, { 
@@ -133,30 +141,30 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Check if we have a valid program after all retries
     if (!validation || !validation.valid || !validation.data) {
-      // After all retries failed, return a user-friendly error
       return NextResponse.json(
         { 
           error: 'Unable to generate a valid program. Please try again in a moment.',
-          details: lastError // Include details for debugging (can be removed in production)
+          details: lastError
         },
         { status: 500 }
       )
     }
 
-    // 6. Create program in database
-    logger.info('Creating program in database', { userId: user.id })
+    // 7. Create workout template + user_program in database
+    logger.info('Creating workout template in database', { userId: user.id })
     const createdProgram = await createProgramFromLLMResponse(user.id, validation.data)
 
     logger.info('Program created successfully', { 
       userId: user.id,
-      programId: createdProgram.program_id 
+      templateId: createdProgram.template_id,
+      userProgramId: createdProgram.user_program_id,
     })
 
     const response = successResponse({ 
-      program_id: createdProgram.program_id,
-      program: createdProgram 
+      template_id: createdProgram.template_id,
+      user_program_id: createdProgram.user_program_id,
+      program: createdProgram,
     }, 201)
     response.headers.set('X-RateLimit-Remaining', String(remaining))
     
@@ -165,4 +173,3 @@ export async function POST(request: NextRequest) {
     return handleRouteError(error)
   }
 }
-
