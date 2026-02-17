@@ -8,7 +8,7 @@
  * - src/lib/prompts/prompt-builder.ts - Combines base + goal prompts
  * 
  * The prompt system now works as follows:
- * 1. Base prompt contains universal rules (12 weeks, 3 workouts/week, JSON format, etc.)
+ * 1. Base prompt contains universal rules (4 weeks, 3 workouts/week, JSON format, etc.)
  * 2. Goal-specific prompts contain specialized training rules for each objective
  * 3. The prompt builder combines them based on user's primary goal
  */

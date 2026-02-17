@@ -90,8 +90,8 @@ export type BlockType = typeof BLOCK_TYPES[number]
  * Program configuration constants.
  */
 export const PROGRAM_CONFIG = {
-  DURATION_WEEKS: 12,
+  DURATION_WEEKS: 4,
   WORKOUTS_PER_WEEK: 3,
-  TOTAL_WORKOUTS: 36, // 12 weeks * 3 workouts per week
+  TOTAL_WORKOUTS: 12, // 4 weeks * 3 workouts per week
 } as const
 

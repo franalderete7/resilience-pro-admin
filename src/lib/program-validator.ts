@@ -45,7 +45,7 @@ export async function validateLLMResponse(
     return { valid: false, error: 'At least one workout is required' }
   }
 
-  // Validate expected number of workouts (12 weeks × 3 per week = 36)
+  // Validate expected number of workouts (4 weeks × 3 per week = 12)
   if (workouts.length !== PROGRAM_CONFIG.TOTAL_WORKOUTS) {
     // Count workouts per week to provide detailed feedback
     const workoutsPerWeek: Record<number, number> = {}
