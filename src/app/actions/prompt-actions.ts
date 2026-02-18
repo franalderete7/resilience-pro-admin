@@ -49,7 +49,12 @@ export async function fetchActivePrompt() {
     musclePower: prompts.musclePower,
     muscleMass: prompts.muscleMass,
     speed: prompts.speed,
-    maintenance: prompts.maintenance
+    maintenance: prompts.maintenance,
+    endurance: prompts.endurance,
+    flexibility: prompts.flexibility,
+    preMatch: prompts.preMatch,
+    fuerzaSuperior: prompts.fuerzaSuperior,
+    fuerzaInferior: prompts.fuerzaInferior
   }
 }
 
@@ -80,6 +85,11 @@ export async function saveNewPromptVersion(data: {
   muscleMass: string
   speed: string
   maintenance: string
+  endurance: string
+  flexibility: string
+  preMatch: string
+  fuerzaSuperior: string
+  fuerzaInferior: string
   isActive: boolean
 }) {
   try {

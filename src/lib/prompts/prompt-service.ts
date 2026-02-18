@@ -10,16 +10,15 @@ export interface PromptVersion {
   created_at: string
   is_active: boolean
   version_label: string | null
-  // Goal-specific prompts
   muscle_power_content: string | null
   muscle_mass_content: string | null
   speed_content: string | null
   maintenance_content: string | null
-  // Legacy fields (for backwards compatibility during migration)
-  methodology_content?: string
-  categories_content?: string
-  rules_content?: string
-  structure_content?: string | null
+  endurance_content: string | null
+  flexibility_content: string | null
+  pre_match_content: string | null
+  fuerza_general_miembro_superior_content: string | null
+  fuerza_general_miembro_inferior_content: string | null
   updated_by: string | null
 }
 
@@ -41,12 +40,16 @@ export async function getActiveGoalPrompts(): Promise<GoalPromptModules> {
       if (error && error.code !== 'PGRST116') {
         console.warn('Error fetching active prompts:', error)
       }
-      // Return defaults
       return {
         musclePower: DEFAULT_GOAL_PROMPTS.improve_muscle_power,
         muscleMass: DEFAULT_GOAL_PROMPTS.increase_muscle_mass,
         speed: DEFAULT_GOAL_PROMPTS.improve_speed,
-        maintenance: DEFAULT_GOAL_PROMPTS.maintenance
+        maintenance: DEFAULT_GOAL_PROMPTS.maintenance,
+        endurance: DEFAULT_GOAL_PROMPTS.improve_endurance,
+        flexibility: DEFAULT_GOAL_PROMPTS.increase_flexibility,
+        preMatch: DEFAULT_GOAL_PROMPTS.pre_match,
+        fuerzaSuperior: DEFAULT_GOAL_PROMPTS.fuerza_general_miembro_superior,
+        fuerzaInferior: DEFAULT_GOAL_PROMPTS.fuerza_general_miembro_inferior
       }
     }
 
@@ -54,7 +57,12 @@ export async function getActiveGoalPrompts(): Promise<GoalPromptModules> {
       musclePower: data.muscle_power_content || DEFAULT_GOAL_PROMPTS.improve_muscle_power,
       muscleMass: data.muscle_mass_content || DEFAULT_GOAL_PROMPTS.increase_muscle_mass,
       speed: data.speed_content || DEFAULT_GOAL_PROMPTS.improve_speed,
-      maintenance: data.maintenance_content || DEFAULT_GOAL_PROMPTS.maintenance
+      maintenance: data.maintenance_content || DEFAULT_GOAL_PROMPTS.maintenance,
+      endurance: data.endurance_content || DEFAULT_GOAL_PROMPTS.improve_endurance,
+      flexibility: data.flexibility_content || DEFAULT_GOAL_PROMPTS.increase_flexibility,
+      preMatch: data.pre_match_content || DEFAULT_GOAL_PROMPTS.pre_match,
+      fuerzaSuperior: data.fuerza_general_miembro_superior_content || DEFAULT_GOAL_PROMPTS.fuerza_general_miembro_superior,
+      fuerzaInferior: data.fuerza_general_miembro_inferior_content || DEFAULT_GOAL_PROMPTS.fuerza_general_miembro_inferior
     }
   } catch (err) {
     console.error('Unexpected error fetching active prompts:', err)
@@ -62,7 +70,12 @@ export async function getActiveGoalPrompts(): Promise<GoalPromptModules> {
       musclePower: DEFAULT_GOAL_PROMPTS.improve_muscle_power,
       muscleMass: DEFAULT_GOAL_PROMPTS.increase_muscle_mass,
       speed: DEFAULT_GOAL_PROMPTS.improve_speed,
-      maintenance: DEFAULT_GOAL_PROMPTS.maintenance
+      maintenance: DEFAULT_GOAL_PROMPTS.maintenance,
+      endurance: DEFAULT_GOAL_PROMPTS.improve_endurance,
+      flexibility: DEFAULT_GOAL_PROMPTS.increase_flexibility,
+      preMatch: DEFAULT_GOAL_PROMPTS.pre_match,
+      fuerzaSuperior: DEFAULT_GOAL_PROMPTS.fuerza_general_miembro_superior,
+      fuerzaInferior: DEFAULT_GOAL_PROMPTS.fuerza_general_miembro_inferior
     }
   }
 }
@@ -83,10 +96,14 @@ export async function createPromptVersion(
     muscleMass: string
     speed: string
     maintenance: string
+    endurance: string
+    flexibility: string
+    preMatch: string
+    fuerzaSuperior: string
+    fuerzaInferior: string
     isActive: boolean
   }
 ) {
-  // If setting to active, first deactivate others
   if (content.isActive) {
     await supabaseAdmin
       .from('prompt_versions')
@@ -102,6 +119,11 @@ export async function createPromptVersion(
       muscle_mass_content: content.muscleMass,
       speed_content: content.speed,
       maintenance_content: content.maintenance,
+      endurance_content: content.endurance,
+      flexibility_content: content.flexibility,
+      pre_match_content: content.preMatch,
+      fuerza_general_miembro_superior_content: content.fuerzaSuperior,
+      fuerza_general_miembro_inferior_content: content.fuerzaInferior,
       is_active: content.isActive,
       updated_by: userId
     })
@@ -129,13 +151,11 @@ export async function getPromptHistory() {
  * Sets a specific version as active.
  */
 export async function setActiveVersion(id: string) {
-  // Deactivate all
   await supabaseAdmin
     .from('prompt_versions')
     .update({ is_active: false })
-    .neq('id', id) // Optimization: usually we'd update all where is_active=true
+    .neq('id', id)
 
-  // Activate target
   const { error } = await supabaseAdmin
     .from('prompt_versions')
     .update({ is_active: true })

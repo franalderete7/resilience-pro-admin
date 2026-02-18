@@ -13,6 +13,11 @@ export interface GoalPromptModules {
   muscleMass?: string
   speed?: string
   maintenance?: string
+  endurance?: string
+  flexibility?: string
+  preMatch?: string
+  fuerzaSuperior?: string
+  fuerzaInferior?: string
 }
 
 /**
@@ -26,19 +31,11 @@ export function buildProgramPrompt(
   userGoals: string[],
   customGoalPrompts?: GoalPromptModules
 ): string {
-  // Get base prompt (universal rules)
   const basePrompt = getBasePrompt()
-  
-  // Determine primary goal
   const primaryGoal = mapUserGoalsToProgramGoal(userGoals)
-  
-  // Get the custom content for this goal if it exists
   const customContent = getCustomContentForGoal(primaryGoal, customGoalPrompts)
-  
-  // Get goal-specific prompt
   const goalPrompt = getGoalPrompt(primaryGoal, customContent)
   
-  // Combine prompts
   return `${basePrompt}
 
 ${goalPrompt}`.trim()
@@ -62,6 +59,10 @@ function getCustomContentForGoal(
       return customPrompts.speed
     case 'maintenance':
       return customPrompts.maintenance
+    case 'improve_endurance':
+      return customPrompts.endurance
+    case 'increase_flexibility':
+      return customPrompts.flexibility
     default:
       return undefined
   }
@@ -77,7 +78,9 @@ export function getPrimaryGoalLabel(userGoals: string[]): string {
     improve_muscle_power: 'Potencia Muscular',
     increase_muscle_mass: 'Masa Muscular',
     improve_speed: 'Velocidad',
-    maintenance: 'Mantenimiento'
+    maintenance: 'Mantenimiento',
+    improve_endurance: 'Resistencia',
+    increase_flexibility: 'Flexibilidad'
   }
   
   return labels[goal]
