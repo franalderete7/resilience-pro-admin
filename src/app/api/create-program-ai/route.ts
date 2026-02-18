@@ -34,22 +34,36 @@ export async function POST(request: NextRequest) {
       return rateLimitErrorResponse(reset)
     }
 
-    // 3. Check program limit (3 free programs)
-    const { count: programCount, error: countError } = await supabaseAdmin
-      .from('user_programs')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', user.id)
+    // 3. Check if user is premium - skip limit check for premium users
+    const { data: dbUser, error: userError } = await supabaseAdmin
+      .from('users')
+      .select('is_premium')
+      .eq('id', user.id)
+      .single()
 
-    if (countError) {
-      logger.error('Failed to check program count', { userId: user.id, error: countError })
-      return errorResponse('Failed to check program limit', 500)
+    if (userError) {
+      logger.error('Failed to check user premium status', { userId: user.id, error: userError })
+      return errorResponse('Failed to verify user status', 500)
     }
 
-    if ((programCount ?? 0) >= 3) {
-      return errorResponse(
-        'Has alcanzado el límite de 3 programas gratuitos. Actualiza a Premium para crear más.',
-        403
-      )
+    // Only check program limit for non-premium users
+    if (!dbUser?.is_premium) {
+      const { count: programCount, error: countError } = await supabaseAdmin
+        .from('user_programs')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+
+      if (countError) {
+        logger.error('Failed to check program count', { userId: user.id, error: countError })
+        return errorResponse('Failed to check program limit', 500)
+      }
+
+      if ((programCount ?? 0) >= 1) {
+        return errorResponse(
+          'Has alcanzado el límite de 1 programa gratuito. Actualiza a Premium para crear más.',
+          403
+        )
+      }
     }
 
     // 4. Parse and validate request body
