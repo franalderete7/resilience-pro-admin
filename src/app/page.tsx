@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/auth-context'
 import { SignInModal } from '@/components/sign-in-modal'
 import { ExerciseList } from '@/components/exercise-list'
 import { AiConfigDashboard } from '@/components/ai-config-dashboard'
+import { UsersDashboard } from '@/components/users-dashboard'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ErrorBoundary } from '@/components/error-boundary'
@@ -87,11 +88,12 @@ function HomeContent() {
 
       <main className="container mx-auto px-4 sm:px-6 pb-safe pt-6">
         <Tabs defaultValue="exercises" className="w-full">
-          <TabsList className="grid w-full max-w-md grid-cols-2 bg-zinc-800 mb-6">
-            <TabsTrigger value="exercises">Base de Datos Ejercicios</TabsTrigger>
+          <TabsList className="grid w-full max-w-md grid-cols-3 bg-zinc-800 mb-6">
+            <TabsTrigger value="exercises">Ejercicios</TabsTrigger>
             <TabsTrigger value="ai-config">Configuración IA</TabsTrigger>
+            <TabsTrigger value="users">Usuarios</TabsTrigger>
           </TabsList>
-          
+
           <TabsContent value="exercises">
             <ErrorBoundary>
               <Suspense fallback={<LoadingState message="Cargando ejercicios..." />}>
@@ -99,11 +101,19 @@ function HomeContent() {
               </Suspense>
             </ErrorBoundary>
           </TabsContent>
-          
+
           <TabsContent value="ai-config">
             <ErrorBoundary>
               <Suspense fallback={<LoadingState message="Cargando configuración..." />}>
                 <AiConfigDashboard />
+              </Suspense>
+            </ErrorBoundary>
+          </TabsContent>
+
+          <TabsContent value="users">
+            <ErrorBoundary>
+              <Suspense fallback={<LoadingState message="Cargando usuarios..." />}>
+                <UsersDashboard />
               </Suspense>
             </ErrorBoundary>
           </TabsContent>

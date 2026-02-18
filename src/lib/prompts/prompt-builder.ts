@@ -80,7 +80,10 @@ export function getPrimaryGoalLabel(userGoals: string[]): string {
     improve_speed: 'Velocidad',
     maintenance: 'Mantenimiento',
     improve_endurance: 'Resistencia',
-    increase_flexibility: 'Flexibilidad'
+    increase_flexibility: 'Flexibilidad',
+    pre_match: 'Pre Match',
+    fuerza_general_miembro_superior: 'Fuerza Superior',
+    fuerza_general_miembro_inferior: 'Fuerza Inferior'
   }
   
   return labels[goal]
