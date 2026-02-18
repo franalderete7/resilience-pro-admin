@@ -63,6 +63,12 @@ function getCustomContentForGoal(
       return customPrompts.endurance
     case 'increase_flexibility':
       return customPrompts.flexibility
+    case 'pre_match':
+      return customPrompts.preMatch
+    case 'fuerza_general_miembro_superior':
+      return customPrompts.fuerzaSuperior
+    case 'fuerza_general_miembro_inferior':
+      return customPrompts.fuerzaInferior
     default:
       return undefined
   }

@@ -12,13 +12,17 @@ export interface User {
   role: string
   is_active: boolean
   is_premium: boolean
+  image_url: string | null
   goal: string | null
   gender: string | null
   height: number | null
   weight: number | null
   weight_goal: number | null
   fitness_level: string | null
+  phone_country_code: string | null
+  phone_number: string | null
   sport: string | null
+  sport_other: string | null
   sport_level: string | null
   age: number | null
   dominant_side: string | null
@@ -26,11 +30,24 @@ export interface User {
   available_equipment: string[] | null
   preferred_days_per_week: number | null
   preferred_session_minutes: number | null
+  injury_history: InjuryRecord[] | null
   referral_source: string | null
+  onboarding_reason: string | null
   onboarding_completed: boolean
   onboarding_completed_at: string | null
+  notifications_enabled: boolean | null
   created_at: string
   updated_at: string
+}
+
+export interface InjuryRecord {
+  id: string
+  bodyPart: string
+  injuryType: string
+  severity: string
+  dateOccurred: string
+  isActive: boolean
+  notes?: string
 }
 
 export interface FetchUsersOptions {
@@ -38,7 +55,9 @@ export interface FetchUsersOptions {
   role?: string
   isPremium?: boolean | null
   goal?: string
+  fitnessLevel?: string
   isActive?: boolean | null
+  onboardingCompleted?: boolean | null
   sortBy?: keyof User
   sortOrder?: 'asc' | 'desc'
   page?: number
@@ -62,7 +81,9 @@ export async function fetchUsers(options: FetchUsersOptions = {}): Promise<Fetch
     role = '',
     isPremium = null,
     goal = '',
+    fitnessLevel = '',
     isActive = null,
+    onboardingCompleted = null,
     sortBy = 'created_at',
     sortOrder = 'desc',
     page = 1,
@@ -92,8 +113,16 @@ export async function fetchUsers(options: FetchUsersOptions = {}): Promise<Fetch
       query = query.eq('goal', goal)
     }
 
+    if (fitnessLevel) {
+      query = query.eq('fitness_level', fitnessLevel)
+    }
+
     if (isActive !== null) {
       query = query.eq('is_active', isActive)
+    }
+
+    if (onboardingCompleted !== null) {
+      query = query.eq('onboarding_completed', onboardingCompleted)
     }
 
     // Get total count before pagination
@@ -174,6 +203,29 @@ export async function toggleUserPremium(userId: string, isPremium: boolean) {
 }
 
 /**
+ * Fetch single user by ID
+ */
+export async function fetchUserById(userId: string): Promise<User | null> {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from('users')
+      .select('*')
+      .eq('id', userId)
+      .single()
+
+    if (error) {
+      console.error('Error fetching user:', error)
+      throw new Error('Failed to fetch user')
+    }
+
+    return data as User
+  } catch (error) {
+    console.error('Error fetching user:', error)
+    return null
+  }
+}
+
+/**
  * Get unique values for filters
  */
 export async function getUserFilterOptions() {
@@ -189,19 +241,27 @@ export async function getUserFilterOptions() {
       .not('goal', 'is', null)
       .order('goal')
 
-    if (rolesError || goalsError) {
-      console.error('Error fetching filter options:', rolesError || goalsError)
+    const { data: fitnessLevels, error: fitnessError } = await supabaseAdmin
+      .from('users')
+      .select('fitness_level')
+      .not('fitness_level', 'is', null)
+      .order('fitness_level')
+
+    if (rolesError || goalsError || fitnessError) {
+      console.error('Error fetching filter options:', rolesError || goalsError || fitnessError)
     }
 
     const uniqueRoles = [...new Set(roles?.map(r => r.role) || [])]
     const uniqueGoals = [...new Set(goals?.map(g => g.goal).filter(Boolean) || [])]
+    const uniqueFitnessLevels = [...new Set(fitnessLevels?.map(f => f.fitness_level).filter(Boolean) || [])]
 
     return {
       roles: uniqueRoles,
-      goals: uniqueGoals
+      goals: uniqueGoals,
+      fitnessLevels: uniqueFitnessLevels
     }
   } catch (error) {
     console.error('Error getting filter options:', error)
-    return { roles: [], goals: [] }
+    return { roles: [], goals: [], fitnessLevels: [] }
   }
 }
