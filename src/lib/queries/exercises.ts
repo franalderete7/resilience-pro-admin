@@ -71,14 +71,13 @@ export function useDeleteExercise() {
     mutationFn: async (exerciseId: number) => {
       logger.info('Deleting exercise', { exerciseId })
       
-      const { error } = await supabase
-        .from('exercises')
-        .delete()
-        .eq('exercise_id', exerciseId)
+      const res = await fetch(`/api/exercises/${exerciseId}`, { method: 'DELETE' })
       
-      if (error) {
-        logger.error('Failed to delete exercise', { exerciseId, error })
-        throw error
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: 'Failed to delete exercise' }))
+        const message = err.error || err.message || 'Failed to delete exercise'
+        logger.error('Failed to delete exercise', { exerciseId, status: res.status, message })
+        throw new Error(message)
       }
       
       logger.info('Exercise deleted successfully', { exerciseId })
