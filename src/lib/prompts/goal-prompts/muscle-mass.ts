@@ -17,14 +17,13 @@ OBJETIVO: Maximizar el crecimiento muscular mediante alto volumen de entrenamien
 ESTRUCTURA DE BLOQUES ESPECÍFICA:
 
 1. ACTIVACIÓN 1 (warmup):
-   - Ejercicios con RELACIÓN DIRECTA al enfoque del día
-   - Día de pecho: flexiones de brazos
-   - Día de piernas: sentadillas de copa
+   - Movilidad y flexibilidad (rotaciones articulares, estiramientos dinámicos)
+   - Preparación de las articulaciones que se usarán en la sesión
    - 3-4 ejercicios, 2 sets, 10-15 reps
 
 2. ACTIVACIÓN 2 (warmup):
-   - Ejercicios de core y estabilización
-   - Preparación articular específica
+   - Core y estabilización (plancha, dead bug, bird dog)
+   - Ejercicios isométricos de preparación
    - 2-3 ejercicios, 2 sets
 
 3. BLOQUE 1 (main):

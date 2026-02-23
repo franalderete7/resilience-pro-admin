@@ -16,14 +16,13 @@ OBJETIVO: Desarrollar la velocidad de movimiento y capacidad reactiva mediante e
 ESTRUCTURA DE BLOQUES ESPECÍFICA:
 
 1. ACTIVACIÓN 1 (warmup):
-   - Ejercicios SENCILLOS de MUCHAS REPETICIONES
+   - Movilidad y flexibilidad dinámica (skipping suave, saltos pequeños, rotaciones)
    - Pliométricos de BAJA FRECUENCIA (bajo impacto)
-   - Ejemplos: skipping suave, saltos pequeños, movilidad dinámica
    - 4-5 ejercicios, 1-2 sets, 15-20 reps
 
 2. ACTIVACIÓN 2 (warmup):
-   - Ejercicios de activación neural
-   - Movimientos rápidos de bajo impacto
+   - Core e isométricos para estabilización
+   - Activación neural con movimientos rápidos de bajo impacto
    - 2-3 ejercicios, 2 sets, 10-12 reps
 
 3. BLOQUE 1 (main):

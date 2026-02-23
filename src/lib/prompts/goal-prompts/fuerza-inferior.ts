@@ -18,13 +18,12 @@ ESTRUCTURA DE BLOQUES ESPECÍFICA:
 1. ACTIVACIÓN 1 - Movilidad de Cadera y Tobillo (warmup):
    - Movilidad de cadera (90/90, pigeon stretch dinámico)
    - Movilidad de tobillo (knee-to-wall, calf raises)
-   - Movilidad de cadera en cuadrupedia (world's greatest stretch)
+   - World's greatest stretch, rotaciones
    - 3-4 ejercicios, 2 sets, 8-10 reps
 
-2. ACTIVACIÓN 2 - Activación Muscular (warmup):
+2. ACTIVACIÓN 2 - Core y Activación Muscular (warmup):
+   - Core y estabilización (plancha, dead bug, bird dog)
    - Activación glútea (puente de glúteos, clam shells, monster walks)
-   - Activación core (plancha, dead bug, bird dog)
-   - Movimientos con peso corporal (sentadilla profunda, good morning)
    - 4-5 ejercicios, 2 sets, 10-12 reps
 
 3. BLOQUE 1 - Patrón Dominante de Rodilla (main):

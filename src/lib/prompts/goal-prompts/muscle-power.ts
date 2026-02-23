@@ -18,12 +18,12 @@ OBJETIVO: Desarrollar la capacidad explosiva y potencia muscular mediante ejerci
 ESTRUCTURA DE BLOQUES ESPECÍFICA:
 
 1. ACTIVACIÓN 1 (warmup):
-   - Ejercicios similares a los bloques principales
-   - Ejemplo: Si el bloque principal tiene sentadillas, usar sentadilla de copa
+   - Movilidad y flexibilidad (rotaciones articulares, estiramientos dinámicos)
+   - Preparación de caderas, hombros, columna para movimientos explosivos
    - 3-5 ejercicios, 1-2 sets, 8-12 reps
 
 2. ACTIVACIÓN 2 (warmup):
-   - Ejercicios de core e isométricos
+   - Core e isométricos (plancha, dead bug, estabilización)
    - Preparación específica para movimientos explosivos
    - 2-3 ejercicios, 2 sets
 

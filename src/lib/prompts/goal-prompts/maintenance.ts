@@ -16,14 +16,13 @@ OBJETIVO: Mantener el nivel de condición física actual con un enfoque equilibr
 ESTRUCTURA DE BLOQUES ESPECÍFICA:
 
 1. ACTIVACIÓN 1 (warmup):
-   - Ejercicios SIMILARES a los ejercicios principales del día
-   - Si el principal es sentadilla, activar con sentadilla de copa
-   - Si el principal es press, activar con flexiones
+   - Movilidad y flexibilidad general (rotaciones articulares, estiramientos dinámicos)
+   - Preparación de caderas, hombros, columna
    - 3-4 ejercicios, 2 sets, 10-12 reps
 
 2. ACTIVACIÓN 2 (warmup):
-   - Core y estabilización general
-   - Movilidad articular
+   - Core y estabilización general (plancha, dead bug, bird dog)
+   - Ejercicios isométricos de estabilización
    - 2-3 ejercicios, 2 sets
 
 3. BLOQUE 1 (main):

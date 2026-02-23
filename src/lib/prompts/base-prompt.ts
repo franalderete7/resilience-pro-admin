@@ -16,8 +16,15 @@ REGLAS UNIVERSALES DEL PROGRAMA:
 
 ESTRUCTURA DE BLOQUES (obligatoria para todos los programas):
 - Siempre 6 bloques: Activación 1, Activación 2, Bloque 1, Bloque 2, Bloque 3, Bloque 4
-- La sección "ESTRUCTURA DE BLOQUES ESPECÍFICA" del prompt del objetivo define QUÉ ejercicios y cantidades van en cada bloque
-- RESPETA ESTRICTAMENTE esa estructura: no uses ejercicios de un bloque en otro, ni ignores las reglas del objetivo
+
+ORDEN OBLIGATORIO DE ACTIVACIONES (NO INVERTIR):
+- Activación 1: SIEMPRE movilidad y flexibilidad (ej: rotaciones articulares, estiramientos dinámicos, world's greatest stretch)
+- Activación 2: SIEMPRE core, estabilidad e isométricos (ej: plancha, dead bug, bird dog, estabilización)
+- NUNCA poner ejercicios de core/isométricos en Activación 1
+- NUNCA poner ejercicios de movilidad/flexibilidad en Activación 2
+
+- La sección "ESTRUCTURA DE BLOQUES ESPECÍFICA" del prompt del objetivo define detalles y cantidades
+- RESPETA ESTRICTAMENTE esa estructura: no uses ejercicios de un bloque en otro
 
 FASES DEL PROGRAMA:
 - Semanas 1-2: FASE BASE - menor volumen, énfasis en técnica y adaptación
@@ -26,6 +33,14 @@ FASES DEL PROGRAMA:
 NOMENCLATURA OBLIGATORIA:
 - Nombres de workout: "Día 1", "Día 2", ..., "Día 12" (NO usar W1D1, S1D1, etc.)
 - Nombres de bloques: "Activación 1", "Activación 2", "Bloque 1", "Bloque 2", "Bloque 3", "Bloque 4"`
+
+/** Always appended - ensures correct block order even when trainer has short custom methodology */
+const BLOCK_ORDER_RULE = `
+
+ORDEN OBLIGATORIO DE ACTIVACIONES (SIEMPRE RESPETAR):
+- Activación 1: movilidad y flexibilidad (rotaciones articulares, estiramientos dinámicos)
+- Activación 2: core, estabilidad e isométricos (plancha, dead bug, bird dog)
+- NUNCA invertir: core en A1 o movilidad en A2`
 
 /** Technical constraints - NOT editable (required for app to parse response) */
 const TECHNICAL_CONSTRAINTS = `
@@ -46,5 +61,5 @@ FORMATO DE RESPUESTA:
  */
 export function getBasePrompt(methodologyContent?: string | null): string {
   const methodology = methodologyContent?.trim() || DEFAULT_METHODOLOGY
-  return `${methodology}${TECHNICAL_CONSTRAINTS}`.trim()
+  return `${methodology}${BLOCK_ORDER_RULE}${TECHNICAL_CONSTRAINTS}`.trim()
 }

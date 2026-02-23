@@ -101,7 +101,8 @@ NOMENCLATURA OBLIGATORIA:
 - Nombres de workout: "Día ${workoutOrderStart}", "Día ${workoutOrderStart + 1}", "Día ${workoutOrderEnd}" (NO usar W1D1, S1D1, etc.)
 - Nombres de bloques: "Activación 1", "Activación 2", "Bloque 1", "Bloque 2", "Bloque 3", "Bloque 4"
 
-IMPORTANTE - ESTRUCTURA DE BLOQUES: Sigue ESTRICTAMENTE la "ESTRUCTURA DE BLOQUES ESPECÍFICA" y "REGLAS ESPECÍFICAS" definidas en el prompt del sistema para el objetivo del usuario. Esa sección indica qué ejercicios y cantidades van en cada bloque (Activación 1, Activación 2, Bloque 1, 2, 3, 4). NO uses definiciones genéricas; respeta lo que dice el prompt del objetivo.
+IMPORTANTE - ESTRUCTURA DE BLOQUES: Sigue ESTRICTAMENTE la "ESTRUCTURA DE BLOQUES ESPECÍFICA" del prompt del sistema.
+ORDEN DE ACTIVACIONES (NO INVERTIR): Activación 1 = movilidad y flexibilidad. Activación 2 = core, estabilidad e isométricos.
 
 RESPONDE SOLO CON JSON (SOLO el objeto workouts, SIN program ni otros campos):
 {

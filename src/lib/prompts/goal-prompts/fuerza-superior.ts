@@ -21,10 +21,9 @@ ESTRUCTURA DE BLOQUES ESPECÍFICA:
    - Aperturas de pecho con banda
    - 3-4 ejercicios, 2 sets, 10-12 reps
 
-2. ACTIVACIÓN 2 - Activación Muscular (warmup):
-   - Activación de dorsales (pull-downs ligeros o activación isométrica)
-   - Activación de pectorales (push-ups o press ligero)
-   - Activación de deltoides (Y-T-W o raises ligeros)
+2. ACTIVACIÓN 2 - Core y Activación Muscular (warmup):
+   - Core y estabilización (plancha, dead bug, bird dog)
+   - Activación de dorsales, pectorales y deltoides (Y-T-W, raises ligeros)
    - 3-4 ejercicios, 2 sets, 12-15 reps
 
 3. BLOQUE 1 - Patrón de Empuje Horizontal (main):
