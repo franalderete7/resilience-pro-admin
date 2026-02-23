@@ -18,9 +18,21 @@ import {
   Heart,
   PersonStanding,
   Check,
-  ChevronRight
+  ChevronRight,
+  BookOpen
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+
+// Metodología (base prompt - editable by trainer)
+const METHODOLOGY_TAB = {
+  id: 'methodology',
+  dbKey: 'methodology',
+  label: 'Metodología',
+  shortLabel: 'Metodología',
+  icon: BookOpen,
+  color: 'slate',
+  description: 'Reglas universales, fases, nomenclatura. Aplica a todos los objetivos.'
+} as const
 
 // All 9 goals matching the database user_goal enum
 const GOAL_TABS = [
@@ -107,7 +119,8 @@ const GOAL_TABS = [
   },
 ] as const
 
-type GoalId = typeof GOAL_TABS[number]['id']
+const ALL_TABS = [METHODOLOGY_TAB, ...GOAL_TABS] as const
+type TabId = typeof ALL_TABS[number]['id']
 
 const COLOR_CLASSES: Record<string, { 
   active: string
@@ -190,6 +203,15 @@ const COLOR_CLASSES: Record<string, {
     ring: 'ring-cyan-500/30',
     selection: 'selection:bg-cyan-500/30',
   },
+  slate: {
+    active: 'bg-slate-500/10 text-slate-300 border-slate-500/30',
+    icon: 'text-slate-300',
+    bg: 'bg-slate-500/5',
+    border: 'border-slate-500/20',
+    dot: 'bg-slate-400',
+    ring: 'ring-slate-500/30',
+    selection: 'selection:bg-slate-500/30',
+  },
   lime: {
     active: 'bg-lime-500/10 text-lime-400 border-lime-500/30',
     icon: 'text-lime-400',
@@ -201,7 +223,8 @@ const COLOR_CLASSES: Record<string, {
   },
 }
 
-const emptyPrompts: Record<GoalId, string> = {
+const emptyPrompts: Record<TabId, string> = {
+  methodology: '',
   musclePower: '',
   muscleMass: '',
   speed: '',
@@ -217,20 +240,20 @@ export function AiConfigDashboard() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saveSuccess, setSaveSuccess] = useState(false)
-  const [activeGoal, setActiveGoal] = useState<GoalId>('musclePower')
+  const [activeTab, setActiveTab] = useState<TabId>('methodology')
   
   const [label, setLabel] = useState('')
-  const [prompts, setPrompts] = useState<Record<GoalId, string>>({ ...emptyPrompts })
-  const [initialState, setInitialState] = useState<Record<GoalId, string>>({ ...emptyPrompts })
+  const [prompts, setPrompts] = useState<Record<TabId, string>>({ ...emptyPrompts })
+  const [initialState, setInitialState] = useState<Record<TabId, string>>({ ...emptyPrompts })
   const [defaults, setDefaults] = useState<Record<string, string>>({})
   
   useEffect(() => {
     loadData()
   }, [])
 
-  // Track which individual goals have been edited
-  const editedGoals = GOAL_TABS.filter(t => prompts[t.id] !== initialState[t.id]).map(t => t.id)
-  const hasUnsavedChanges = editedGoals.length > 0
+  // Track which tabs have been edited
+  const editedTabs = ALL_TABS.filter(t => prompts[t.id] !== initialState[t.id]).map(t => t.id)
+  const hasUnsavedChanges = editedTabs.length > 0
 
   async function loadData() {
     setLoading(true)
@@ -241,7 +264,8 @@ export function AiConfigDashboard() {
       ])
       
       if (data) {
-        const loaded: Record<GoalId, string> = {
+        const loaded: Record<TabId, string> = {
+          methodology: data.methodology || '',
           musclePower: data.musclePower || '',
           muscleMass: data.muscleMass || '',
           speed: data.speed || '',
@@ -259,6 +283,7 @@ export function AiConfigDashboard() {
 
       if (defaultData) {
         setDefaults({
+          methodology: defaultData.methodology || '',
           musclePower: defaultData.improve_muscle_power || '',
           muscleMass: defaultData.increase_muscle_mass || '',
           speed: defaultData.improve_speed || '',
@@ -283,6 +308,7 @@ export function AiConfigDashboard() {
     try {
       await saveNewPromptVersion({
         label,
+        methodology: prompts.methodology,
         musclePower: prompts.musclePower,
         muscleMass: prompts.muscleMass,
         speed: prompts.speed,
@@ -306,12 +332,13 @@ export function AiConfigDashboard() {
     }
   }
 
-  function handleResetGoal(goalId: GoalId) {
-    if (!confirm(`¿Restablecer "${GOAL_TABS.find(t => t.id === goalId)?.label}" al prompt por defecto?`)) {
+  function handleResetTab(tabId: TabId) {
+    const tab = ALL_TABS.find(t => t.id === tabId)
+    if (!confirm(`¿Restablecer "${tab?.label}" al valor por defecto?`)) {
       return
     }
-    if (defaults[goalId]) {
-      setPrompts(prev => ({ ...prev, [goalId]: defaults[goalId] }))
+    if (defaults[tabId]) {
+      setPrompts(prev => ({ ...prev, [tabId]: defaults[tabId] }))
     }
   }
 
@@ -320,6 +347,7 @@ export function AiConfigDashboard() {
       return
     }
     setPrompts({
+      methodology: defaults.methodology || '',
       musclePower: defaults.musclePower || '',
       muscleMass: defaults.muscleMass || '',
       speed: defaults.speed || '',
@@ -332,8 +360,8 @@ export function AiConfigDashboard() {
     })
   }
 
-  const updatePrompt = useCallback((goalId: GoalId, value: string) => {
-    setPrompts(prev => ({ ...prev, [goalId]: value }))
+  const updatePrompt = useCallback((tabId: TabId, value: string) => {
+    setPrompts(prev => ({ ...prev, [tabId]: value }))
   }, [])
 
   if (loading) {
@@ -345,11 +373,11 @@ export function AiConfigDashboard() {
     )
   }
 
-  const currentTab = GOAL_TABS.find(t => t.id === activeGoal)!
-  const colors = COLOR_CLASSES[currentTab.color]
-  const currentIsEdited = editedGoals.includes(activeGoal)
-  const lineCount = prompts[activeGoal].split('\n').length
-  const charCount = prompts[activeGoal].length
+  const currentTab = ALL_TABS.find(t => t.id === activeTab)!
+  const colors = COLOR_CLASSES[currentTab.color] ?? COLOR_CLASSES.slate
+  const currentIsEdited = editedTabs.includes(activeTab)
+  const lineCount = prompts[activeTab].split('\n').length
+  const charCount = prompts[activeTab].length
 
   return (
     <div className="flex flex-col gap-4 w-full">
@@ -380,9 +408,9 @@ export function AiConfigDashboard() {
             <p className="text-xs text-zinc-400">
               {hasUnsavedChanges 
                 ? <span className="text-amber-400 font-medium">
-                    {editedGoals.length === 1 
-                      ? `1 objetivo modificado` 
-                      : `${editedGoals.length} objetivos modificados`
+                    {editedTabs.length === 1 
+                      ? `1 sección modificada` 
+                      : `${editedTabs.length} secciones modificadas`
                     }
                   </span> 
                 : saveSuccess
@@ -436,18 +464,18 @@ export function AiConfigDashboard() {
       {/* ── Main Layout: Sidebar + Editor ── */}
       <div className="flex gap-3 h-[calc(100vh-180px)]">
         
-        {/* ── Goal Sidebar ── */}
+        {/* ── Tab Sidebar ── */}
         <div className="w-56 shrink-0 flex flex-col gap-1.5 overflow-y-auto">
-          {GOAL_TABS.map((tab) => {
+          {ALL_TABS.map((tab) => {
             const Icon = tab.icon
-            const tabColors = COLOR_CLASSES[tab.color]
-            const isActive = activeGoal === tab.id
-            const isEdited = editedGoals.includes(tab.id)
+            const tabColors = COLOR_CLASSES[tab.color] ?? COLOR_CLASSES.slate
+            const isActive = activeTab === tab.id
+            const isEdited = editedTabs.includes(tab.id)
             
             return (
               <button
                 key={tab.id}
-                onClick={() => setActiveGoal(tab.id)}
+                onClick={() => setActiveTab(tab.id)}
                 className={cn(
                   "flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all group w-full",
                   isActive
@@ -481,8 +509,9 @@ export function AiConfigDashboard() {
             <div className="bg-zinc-900/50 rounded-lg p-3 border border-zinc-800/50">
               <h4 className="text-xs font-medium text-zinc-300 mb-1">Cómo funciona</h4>
               <p className="text-[11px] text-zinc-500 leading-relaxed">
-                Cada objetivo tiene un prompt que define las reglas de entrenamiento. 
-                Al crear un programa, se usa el prompt del objetivo principal del usuario.
+                <strong>Metodología:</strong> Reglas universales (duración, fases, nomenclatura). Aplica a todos los programas.
+                <br /><br />
+                <strong>Objetivos:</strong> Cada uno define la estructura de bloques y ejercicios específicos.
               </p>
             </div>
           </div>
@@ -513,7 +542,7 @@ export function AiConfigDashboard() {
                 </span>
               )}
               <Button
-                onClick={() => handleResetGoal(activeGoal)}
+                onClick={() => handleResetTab(activeTab)}
                 variant="ghost"
                 size="sm"
                 className="text-zinc-500 hover:text-zinc-300 h-7 text-xs cursor-pointer"
@@ -527,13 +556,15 @@ export function AiConfigDashboard() {
           {/* Textarea Editor */}
           <div className="flex-1 overflow-hidden relative">
             <Textarea 
-              value={prompts[activeGoal]} 
-              onChange={(e) => updatePrompt(activeGoal, e.target.value)} 
+              value={prompts[activeTab]} 
+              onChange={(e) => updatePrompt(activeTab, e.target.value)} 
               className={cn(
                 "h-full resize-none rounded-none border-0 bg-zinc-950/50 p-6 font-mono text-sm leading-relaxed focus-visible:ring-0 text-zinc-300",
                 colors.selection
               )}
-              placeholder={`Define las reglas específicas para programas de ${currentTab.label}...`}
+              placeholder={activeTab === 'methodology' 
+                ? 'Define las reglas universales, fases y nomenclatura...' 
+                : `Define las reglas específicas para programas de ${currentTab.label}...`}
             />
           </div>
           

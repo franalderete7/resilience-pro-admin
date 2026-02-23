@@ -9,6 +9,7 @@ import { getBasePrompt } from './base-prompt'
 import { getGoalPrompt, mapUserGoalsToProgramGoal, type ProgramGoal } from './goal-prompts'
 
 export interface GoalPromptModules {
+  methodology?: string
   musclePower?: string
   muscleMass?: string
   speed?: string
@@ -31,7 +32,7 @@ export function buildProgramPrompt(
   userGoals: string[],
   customGoalPrompts?: GoalPromptModules
 ): string {
-  const basePrompt = getBasePrompt()
+  const basePrompt = getBasePrompt(customGoalPrompts?.methodology)
   const primaryGoal = mapUserGoalsToProgramGoal(userGoals)
   const customContent = getCustomContentForGoal(primaryGoal, customGoalPrompts)
   const goalPrompt = getGoalPrompt(primaryGoal, customContent)

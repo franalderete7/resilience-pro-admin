@@ -1,4 +1,5 @@
 import { supabaseAdmin } from '../supabase-admin'
+import { DEFAULT_METHODOLOGY } from './base-prompt'
 import { 
   DEFAULT_GOAL_PROMPTS,
   type ProgramGoal 
@@ -10,6 +11,7 @@ export interface PromptVersion {
   created_at: string
   is_active: boolean
   version_label: string | null
+  methodology_content: string | null
   muscle_power_content: string | null
   muscle_mass_content: string | null
   speed_content: string | null
@@ -41,6 +43,7 @@ export async function getActiveGoalPrompts(): Promise<GoalPromptModules> {
         console.warn('Error fetching active prompts:', error)
       }
       return {
+        methodology: DEFAULT_METHODOLOGY,
         musclePower: DEFAULT_GOAL_PROMPTS.improve_muscle_power,
         muscleMass: DEFAULT_GOAL_PROMPTS.increase_muscle_mass,
         speed: DEFAULT_GOAL_PROMPTS.improve_speed,
@@ -54,6 +57,7 @@ export async function getActiveGoalPrompts(): Promise<GoalPromptModules> {
     }
 
     return {
+      methodology: data.methodology_content || DEFAULT_METHODOLOGY,
       musclePower: data.muscle_power_content || DEFAULT_GOAL_PROMPTS.improve_muscle_power,
       muscleMass: data.muscle_mass_content || DEFAULT_GOAL_PROMPTS.increase_muscle_mass,
       speed: data.speed_content || DEFAULT_GOAL_PROMPTS.improve_speed,
@@ -67,6 +71,7 @@ export async function getActiveGoalPrompts(): Promise<GoalPromptModules> {
   } catch (err) {
     console.error('Unexpected error fetching active prompts:', err)
     return {
+      methodology: DEFAULT_METHODOLOGY,
       musclePower: DEFAULT_GOAL_PROMPTS.improve_muscle_power,
       muscleMass: DEFAULT_GOAL_PROMPTS.increase_muscle_mass,
       speed: DEFAULT_GOAL_PROMPTS.improve_speed,
@@ -92,6 +97,7 @@ export async function createPromptVersion(
   userId: string | null,
   content: {
     label: string
+    methodology: string
     musclePower: string
     muscleMass: string
     speed: string
@@ -115,6 +121,7 @@ export async function createPromptVersion(
     .from('prompt_versions')
     .insert({
       version_label: content.label,
+      methodology_content: content.methodology,
       muscle_power_content: content.musclePower,
       muscle_mass_content: content.muscleMass,
       speed_content: content.speed,

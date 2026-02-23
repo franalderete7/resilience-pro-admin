@@ -23,6 +23,7 @@ async function fetchAvailableExercises() {
   const { data, error } = await supabaseAdmin
     .from('exercises')
     .select('exercise_id, name, category, muscle_groups, difficulty_level, equipment_needed')
+    .eq('is_active', true)
     .order('created_at', { ascending: false })
 
   if (error) {
@@ -100,13 +101,7 @@ NOMENCLATURA OBLIGATORIA:
 - Nombres de workout: "Día ${workoutOrderStart}", "Día ${workoutOrderStart + 1}", "Día ${workoutOrderEnd}" (NO usar W1D1, S1D1, etc.)
 - Nombres de bloques: "Activación 1", "Activación 2", "Bloque 1", "Bloque 2", "Bloque 3", "Bloque 4"
 
-ESTRUCTURA DE BLOQUES (6 bloques por workout):
-1. Activación 1 (warmup): 3-5 ejercicios de mobility and flexibility, 1-2 sets
-2. Activación 2 (warmup): 2-3 ejercicios de core/isometrics, 2 sets
-3. Bloque 1 (main): 2-3 ejercicios de ballistics/plyometrics/agility/olympic-derivatives, 3-4 sets
-4. Bloque 2 (main): 2 ejercicios (1 inferior + 1 superior) de hip-dominant/knee-dominant/pushes/pulls, sets según objetivo
-5. Bloque 3 (main): 2 ejercicios unilaterales de hip-dominant/knee-dominant/pushes/pulls, sets según objetivo
-6. Bloque 4 (main): 2-3 ejercicios de accessories/ankle-dominant, 2-3 sets
+IMPORTANTE - ESTRUCTURA DE BLOQUES: Sigue ESTRICTAMENTE la "ESTRUCTURA DE BLOQUES ESPECÍFICA" y "REGLAS ESPECÍFICAS" definidas en el prompt del sistema para el objetivo del usuario. Esa sección indica qué ejercicios y cantidades van en cada bloque (Activación 1, Activación 2, Bloque 1, 2, 3, 4). NO uses definiciones genéricas; respeta lo que dice el prompt del objetivo.
 
 RESPONDE SOLO CON JSON (SOLO el objeto workouts, SIN program ni otros campos):
 {

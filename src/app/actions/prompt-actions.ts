@@ -1,6 +1,7 @@
 'use server'
 
 import { getActiveGoalPrompts, createPromptVersion, getPromptHistory, setActiveVersion, PromptVersion } from '@/lib/prompts/prompt-service'
+import { DEFAULT_METHODOLOGY } from '@/lib/prompts/base-prompt'
 import { DEFAULT_GOAL_PROMPTS, GOAL_METADATA, type ProgramGoal } from '@/lib/prompts/goal-prompts'
 import { revalidatePath } from 'next/cache'
 import { cookies } from 'next/headers'
@@ -41,11 +42,12 @@ async function getAuthenticatedUser() {
 }
 
 /**
- * Fetch active goal prompts for the UI
+ * Fetch active goal prompts and methodology for the UI
  */
 export async function fetchActivePrompt() {
   const prompts = await getActiveGoalPrompts()
   return {
+    methodology: prompts.methodology,
     musclePower: prompts.musclePower,
     muscleMass: prompts.muscleMass,
     speed: prompts.speed,
@@ -69,7 +71,10 @@ export async function fetchGoalMetadata() {
  * Get default prompts for reset functionality
  */
 export async function fetchDefaultPrompts() {
-  return DEFAULT_GOAL_PROMPTS
+  return {
+    methodology: DEFAULT_METHODOLOGY,
+    ...DEFAULT_GOAL_PROMPTS
+  }
 }
 
 export async function fetchPromptHistory() {
@@ -81,6 +86,7 @@ export async function fetchPromptHistory() {
  */
 export async function saveNewPromptVersion(data: {
   label: string
+  methodology: string
   musclePower: string
   muscleMass: string
   speed: string
